@@ -1,0 +1,246 @@
+<!doctype html>
+<meta charset="utf-8"/>
+<title>DALL•E</title>
+<script src="page.js"></script>
+<style>
+
+:root {
+  --text-color: #404040;
+}
+body {
+  font-family: system,-apple-system,system-ui,BlinkMacSystemFont,sans-serif;
+  color: var(--text-color);
+  font-size: 1.2rem;
+}
+
+.close-history {
+  position: absolute;
+  top: .5em;
+  right: .7em;
+  color: grey;
+  cursor: pointer;
+}
+
+.container {
+  display: grid;
+  grid-column-gap: 10px;
+  grid-template-columns: 1fr 2fr minmax(100px, 1fr);
+  grid-column-gap: 2em;
+}
+.main-content {
+  margin-top: 2rem;
+  grid-column: 2;
+  overflow: scroll;
+}
+.history-sidebar {
+  margin-top: 2rem;
+  grid-column: 3;
+  overflow: scroll;
+}
+@media (max-width: 600px) {
+  .container {
+    grid-template-columns: 0fr 1fr 0fr !important;
+  }
+  .history-sidebar {
+    grid-column: 2 !important;
+  }
+}
+
+.output {
+  margin-top: 2em;
+}
+
+.output > img, .history-modal img {
+  margin-left: auto;
+  margin-right: auto;
+  display: block;
+}
+
+blockquote {
+  color: grey;
+}
+
+dialog {
+  max-width: 60rem;
+  outline: none;
+  border-radius: 5px;
+  box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+}
+
+a, a:visited {
+  color: #666;
+}
+
+.confirm-buttons {
+  display: flex;
+  justify-content: center;
+  margin-top: 1em;
+}
+
+.confirm-buttons input {
+  font-size: 1.2rem;
+  margin-left: 2em;
+  margin-right: 2em;
+}
+
+#api-key-confirm {
+  font-size: 1.2rem;
+  float: right;
+}
+
+.gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1em;
+}
+
+.gallery-box:hover .trash {
+  display: initial;
+}
+
+.trash {
+  display: none;
+  position: absolute;
+  top: .4em;
+  right: .4em;
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  padding: .2em;
+  border: 1px dashed grey;
+  cursor: pointer;
+}
+
+.spinner {
+  display: none;
+  margin-top: 2em;
+  justify-content: center;
+}
+
+.footer {
+  position: fixed;
+  left: .2em;
+  bottom: .1em;
+  color: #ccc;
+}
+
+.footer a, .footer a:visited {
+  color: #ccc;
+}
+
+
+.input-container {
+  position: relative;
+}
+/* we need the wrapper because using padding on the textarea messes up the resizing */
+.input-wrapper {
+  border-radius: 5px;
+  padding: 0.8rem;
+  border: 1px solid #aaa;
+  box-shadow: 0px 0px 10px #aaa ;
+}
+.input:focus {
+  outline: none;
+}
+.send-button-container {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0.3rem;
+  display: flex;
+  align-items: center;
+}
+.send-button {
+  background: inherit;
+  border: none;
+  font-size: 1.6rem;
+  border-radius: 5px;
+}
+.send-button:hover {
+  background: #ddd;
+}
+.send-button:active {
+  margin-top: 2px;
+}
+/* https://css-tricks.com/the-cleanest-trick-for-autogrowing-textareas/ */
+.grow-wrap {
+  display: grid;
+}
+.grow-wrap::after {
+  content: attr(data-replicated-value) " ";
+  white-space: pre-wrap;
+  visibility: hidden;
+}
+.grow-wrap > textarea {
+  resize: none;
+  overflow: hidden;
+}
+.grow-wrap > textarea,
+.grow-wrap::after {
+  padding: 0.5rem;
+  border-radius: 5px;
+  border: none;
+  font: inherit;
+  font-size: 1.2rem;
+  grid-area: 1 / 1 / 2 / 2;
+}
+</style>
+
+<dialog class="history-modal">
+  <div class="close-history">×</div>
+  <div class="modal-contents"></div>
+</dialog>
+
+<dialog class="confirm-delete-modal">
+  Delete this image? This cannot be undone.
+  <p>Tip: hold "shift" while clicking the trash icon to skip this confirmation.</p>
+  <div class="confirm-buttons">
+    <form method="dialog">
+      <input type="button" value="cancel" id="confirm-cancel"></input><input type="button" autofocus value="delete" id="confirm-delete"></input>
+    </form>
+  </div>
+</dialog>
+
+<dialog class="api-key">
+  Enter your <a href="https://platform.openai.com/api-keys">OpenAI API key</a>:<br>
+  (only do this if you trust me or have reviewed the source!)<br><br>
+  <input class="api-key-input" size=56 style="font-size:1.2rem"></input><br><br>
+  <input type="button" value="confirm" id="api-key-confirm"></input>
+</dialog>
+
+
+<div class="container">
+  <div class="main-content">
+    <div class="input-container">
+      <div class="input-wrapper">
+        <div class="grow-wrap">
+          <textarea class="input" rows="1" autofocus placeholder="Image description"></textarea>
+        </div>
+      </div>
+      <div class="send-button-container">
+        <!-- icon from Feather: https://github.com/feathericons/feather/blob/593b3bf516087d07d362280b34ec1a5383e71572/LICENSE -->
+        <button class="send-button"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-image"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg></button>
+      </div>
+    </div>
+
+    <div class="output">
+      <blockquote></blockquote>
+    </div>
+
+    <div class="spinner">
+      <!-- By Sam Herbert (@sherb), for everyone. More @ http://goo.gl/7AJzbL -->
+      <svg width="105" height="105" viewBox="0 0 105 105" xmlns="http://www.w3.org/2000/svg" fill="#aaa"><circle cx="12.5" cy="12.5" r="12.5"><animate attributeName="fill-opacity" begin="0s" dur="1s" values="1;.2;1" calcMode="linear" repeatCount="indefinite" /></circle><circle cx="12.5" cy="52.5" r="12.5" fill-opacity=".5"><animate attributeName="fill-opacity" begin="100ms" dur="1s" values="1;.2;1" calcMode="linear" repeatCount="indefinite" /></circle><circle cx="52.5" cy="12.5" r="12.5"><animate attributeName="fill-opacity" begin="300ms" dur="1s" values="1;.2;1" calcMode="linear" repeatCount="indefinite" /></circle><circle cx="52.5" cy="52.5" r="12.5"><animate attributeName="fill-opacity" begin="600ms" dur="1s" values="1;.2;1" calcMode="linear" repeatCount="indefinite" /></circle><circle cx="92.5" cy="12.5" r="12.5"><animate attributeName="fill-opacity" begin="800ms" dur="1s" values="1;.2;1" calcMode="linear" repeatCount="indefinite" /></circle><circle cx="92.5" cy="52.5" r="12.5"><animate attributeName="fill-opacity" begin="400ms" dur="1s" values="1;.2;1" calcMode="linear" repeatCount="indefinite" /></circle><circle cx="12.5" cy="92.5" r="12.5"><animate attributeName="fill-opacity" begin="700ms" dur="1s" values="1;.2;1" calcMode="linear" repeatCount="indefinite" /></circle><circle cx="52.5" cy="92.5" r="12.5"><animate attributeName="fill-opacity" begin="500ms" dur="1s" values="1;.2;1" calcMode="linear" repeatCount="indefinite" /></circle><circle cx="92.5" cy="92.5" r="12.5"><animate attributeName="fill-opacity" begin="200ms" dur="1s" values="1;.2;1" calcMode="linear" repeatCount="indefinite" /></circle></svg>
+    </div>
+  </div>
+
+  <div class="history-sidebar">
+    <div class="gallery">
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <a href="https://github.com/bakkot/simple-dalle-ui">source</a>
+</div>
+
+<!-- trash icon from Feather: https://github.com/feathericons/feather/blob/593b3bf516087d07d362280b34ec1a5383e71572/LICENSE -->
+<svg id="trash-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-trash-2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
