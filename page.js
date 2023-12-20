@@ -167,8 +167,8 @@ async function submit() {
           n: 1,
           size: '1024x1024',
           response_format: 'b64_json',
-          // quality: 'hd',
-          // style: 'natural', // or 'vivid'
+          quality,
+          standard,
         }),
       })).json()
     }

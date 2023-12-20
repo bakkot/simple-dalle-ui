@@ -29,7 +29,7 @@ for (let file of ['page.js', 'save-worker.js']) {
 
 app.post('/image', async (req, res) => {
   console.log('working...');
-  let { prompt, ts } = req.body;
+  let { prompt, ts, quality, style } = req.body;
 
   if (SAVE_OUTPUTS) {
     fs.writeFileSync(path.join(outdir, `${ts}--prompt.txt`), prompt, 'utf8');
@@ -48,8 +48,8 @@ app.post('/image', async (req, res) => {
       n: 1,
       size: '1024x1024',
       response_format: 'b64_json',
-      // quality: 'hd',
-      // style: 'natural', // or 'vivid'
+      quality,
+      style,
     }),
   })).json();
 
