@@ -9,8 +9,7 @@ If you have your own OpenAI API key, you can try it <a href="https://bakkot.gith
 
 ## TODO
 
-Right now this hardcodes `dall-e-3` and `1024x1024`, with default quality and style. There could be buttons to customize at least quality and style.
-
+Doesn't support changing sizes.
 
 ## Deploying
 
