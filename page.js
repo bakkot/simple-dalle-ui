@@ -45,6 +45,7 @@ let removeActiveImage = () => {
   console.error('unreachable');
 };
 
+let activeImg = null;
 function addHistoryItem(url, prompt, revised, ts, quality, style) {
   let box = document.createElement('span');
   box.classList.add('gallery-box');
@@ -57,6 +58,7 @@ function addHistoryItem(url, prompt, revised, ts, quality, style) {
   img.alt = revised;
 
   img.addEventListener('click', () => {
+    activeImg = img;
     modal(url, prompt, revised, quality, style);
   });
 
@@ -126,6 +128,28 @@ function modal(url, prompt, revised, quality, style) {
 
   modal.showModal();
 }
+
+document.addEventListener('keydown', e => {
+  if (e.code !== 'ArrowLeft' && e.code !== 'ArrowRight') {
+    return;
+  }
+  let modal = document.querySelector('.history-modal');
+  if (!modal.open || activeImg == null) return;
+
+  let gallery = document.querySelector('.gallery');
+  let imgs = [...gallery.querySelectorAll('img')];
+
+  let idx = imgs.indexOf(activeImg);
+  if (idx === -1) return;
+
+  if (e.code === 'ArrowLeft') {
+    if (idx === 0) return;
+    imgs[idx - 1].click();
+  } else {
+    if (idx === imgs.length - 1) return;
+    imgs[idx + 1].click();
+  }
+});
 
 
 // only used if USES_SERVER === false;
