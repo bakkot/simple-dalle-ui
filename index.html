@@ -30,7 +30,9 @@ body {
 .main-content {
   margin-top: 2rem;
   grid-column: 2;
+  overflow: scroll;
 }
+
 .history-sidebar {
   margin-top: 2rem;
   grid-column: 3;
@@ -43,6 +45,13 @@ body {
   .history-sidebar {
     grid-column: 2 !important;
   }
+}
+
+.settings {
+  margin-top: 1em;
+  text-align: center;
+  color: dimgrey;
+  accent-color: currentColor;
 }
 
 .output {
@@ -148,18 +157,7 @@ a, a:visited {
   display: flex;
   align-items: center;
 }
-.settings-button-container {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -2.5rem;
-  display: flex;
-  align-items: center;
-}
-.settings-button-container > button {
-  color: lightgrey;
-}
-.button {
+.send-button {
   background: inherit;
   padding: 0.3rem;
   border: none;
@@ -168,10 +166,10 @@ a, a:visited {
   display: flex;
   align-items: center;
 }
-.button:hover {
+.send-button:hover {
   background: #ddd;
 }
-.button:active {
+.send-button:active {
   margin-top: 2px;
 }
 /* https://css-tricks.com/the-cleanest-trick-for-autogrowing-textareas/ */
@@ -229,14 +227,16 @@ a, a:visited {
           <textarea class="input" rows="1" autofocus placeholder="Image description"></textarea>
         </div>
       </div>
-      <div class="settings-button-container">
-        <!-- icon from Feather: https://github.com/feathericons/feather/blob/593b3bf516087d07d362280b34ec1a5383e71572/LICENSE -->
-        <button class="button"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-settings"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
-      </div>
       <div class="send-button-container">
         <!-- icon from Feather: https://github.com/feathericons/feather/blob/593b3bf516087d07d362280b34ec1a5383e71572/LICENSE -->
-        <button class="button"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-image"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg></button>
+        <button class="send-button"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-image"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg></button>
       </div>
+    </div>
+
+    <div class="settings">
+      <input type="checkbox" id="hd"> <label for="hd">hd</label>
+      &nbsp;&nbsp;&nbsp;&nbsp;<!--I'm lazy, this works-->
+      <input type="checkbox" id="vivid"> <label for="vivid">vivid</label>
     </div>
 
     <div class="output">

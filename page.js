@@ -45,7 +45,7 @@ let removeActiveImage = () => {
   console.error('unreachable');
 };
 
-function addHistoryItem(url, prompt, revised, ts) {
+function addHistoryItem(url, prompt, revised, ts, quality, style) {
   let box = document.createElement('span');
   box.classList.add('gallery-box');
   box.style.position = 'relative';
@@ -57,7 +57,7 @@ function addHistoryItem(url, prompt, revised, ts) {
   img.alt = revised;
 
   img.addEventListener('click', () => {
-    modal(url, prompt, revised);
+    modal(url, prompt, revised, quality, style);
   });
 
   box.append(img);
@@ -75,6 +75,9 @@ function addHistoryItem(url, prompt, revised, ts) {
       await dalleDir.removeEntry(`${ts}--image.png`);
       await dalleDir.removeEntry(`${ts}--prompt.txt`);
       await dalleDir.removeEntry(`${ts}--revised.txt`);
+      try {
+        await dalleDir.removeEntry(`${ts}--settings.txt`);
+      } catch { /* probably predates settings */ }
 
       box.remove();
     }
@@ -90,7 +93,7 @@ function addHistoryItem(url, prompt, revised, ts) {
   document.querySelector('.gallery').append(box);
 }
 
-function modal(url, prompt, revised) {
+function modal(url, prompt, revised, quality, style) {
   let modal = document.querySelector('.history-modal');
 
   let contents = modal.querySelector('.modal-contents');
@@ -99,6 +102,16 @@ function modal(url, prompt, revised) {
   let p = document.createElement('p');
   p.innerText = prompt;
   contents.append(p);
+
+  if (quality !== 'standard' || style !== 'natural') {
+    let p = document.createElement('p');
+    let extra = [
+      ...quality !== 'standard' ? [quality] : [],
+      ...style !== 'natural' ? [style] : [],
+    ].join(', ');
+    p.innerText = `(${extra})`;
+    contents.append(p);
+  }
 
   let img = document.createElement('img');
   img.src = url;
@@ -141,14 +154,19 @@ async function submit() {
   let spinner = document.querySelector('.spinner');
   spinner.style.display = 'flex';
 
+  let quality = document.querySelector('#hd').checked ? 'hd' : 'standard';
+  let style = document.querySelector('#vivid').checked ? 'vivid' : 'natural';
+
   try {
     let ts = (new Date).toISOString().replace(/:/g, '_');
-    let message = {
-      prompt,
-      ts,
-    };
     let res;
     if (USES_SERVER) {
+      let message = {
+        prompt,
+        ts,
+        quality,
+        style,
+      };
       res = await (await fetch('./image', {
         method: 'post',
         body: JSON.stringify(message),
@@ -168,7 +186,7 @@ async function submit() {
           size: '1024x1024',
           response_format: 'b64_json',
           quality,
-          standard,
+          style,
         }),
       })).json()
     }
@@ -192,10 +210,11 @@ async function submit() {
     output.prepend(img);
     bq.innerText = revised_prompt;
 
-    addHistoryItem(url, prompt, revised_prompt, ts);
+    addHistoryItem(url, prompt, revised_prompt, ts, quality, style);
 
     await save([opfsDir], `${ts}--image.png`, data);
     await save([opfsDir], `${ts}--prompt.txt`, (new TextEncoder).encode(prompt));
+    await save([opfsDir], `${ts}--settings.txt`, (new TextEncoder).encode(`quality: ${quality}\nstyle: ${style}\n`));
     await save([opfsDir], `${ts}--revised.txt`, (new TextEncoder).encode(revised_prompt));
   } catch (e) {
     console.error(e);
@@ -307,7 +326,7 @@ addEventListener('DOMContentLoaded', async () => {
     obj[type] = handle;
   }
   for (let [ts, handles] of Object.entries(old).sort((a, b) => a[0] > b[0] ? 1 : -1)) {
-    let { 'image.png': imageH, 'prompt.txt': promptH, 'revised.txt': revisedH } = handles;
+    let { 'image.png': imageH, 'prompt.txt': promptH, 'revised.txt': revisedH, 'settings.txt': settingsH } = handles;
     if (imageH == null || promptH == null || revisedH == null) {
       // presumably an error saving, I guess? might as well clean up
       for (let name of Object.keys(handles)) {
@@ -318,8 +337,10 @@ addEventListener('DOMContentLoaded', async () => {
     let image = await imageH.getFile();
     let prompt = await (await promptH.getFile()).text();
     let revised = await (await revisedH.getFile()).text();
+    let settings = settingsH ? await (await settingsH.getFile()).text() : `quality: standard\nstyle: natural\n`;
+    let { quality, style } = settings.match(/quality: (?<quality>\w+)\nstyle: (?<style>\w+)/).groups;
 
-    addHistoryItem(URL.createObjectURL(image), prompt, revised, ts);
+    addHistoryItem(URL.createObjectURL(image), prompt, revised, ts, quality, style);
   }
 });
 

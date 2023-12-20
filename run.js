@@ -33,6 +33,7 @@ app.post('/image', async (req, res) => {
 
   if (SAVE_OUTPUTS) {
     fs.writeFileSync(path.join(outdir, `${ts}--prompt.txt`), prompt, 'utf8');
+    fs.writeFileSync(path.join(outdir, `${ts}--settings.txt`), `quality: ${quality}\nstyle: ${style}\n`, 'utf8');
   }
 
   // specifically not using the openai npm package so that we can do this the same way on the web
