@@ -70,7 +70,7 @@ function addHistoryItem(url, prompt, revised, ts, quality, style) {
   trash.classList.add('trash');
   box.append(trash);
 
-  trash.addEventListener('click', async e => {
+  trash.addEventListener('mousedown', async e => {
     async function remove() {
       let opfsRoot = await navigator.storage.getDirectory();
       let dalleDir = await opfsRoot.getDirectoryHandle(opfsDir);
