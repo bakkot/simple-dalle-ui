@@ -361,7 +361,7 @@ addEventListener('DOMContentLoaded', async () => {
     let image = await imageH.getFile();
     let prompt = await (await promptH.getFile()).text();
     let revised = await (await revisedH.getFile()).text();
-    let settings = settingsH ? await (await settingsH.getFile()).text() : `quality: standard\nstyle: natural\n`;
+    let settings = settingsH ? await (await settingsH.getFile()).text() : `quality: standard\nstyle: vivid\n`;
     let { quality, style } = settings.match(/quality: (?<quality>\w+)\nstyle: (?<style>\w+)/).groups;
 
     addHistoryItem(URL.createObjectURL(image), prompt, revised, ts, quality, style);
