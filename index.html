@@ -36,7 +36,10 @@ body {
 .history-sidebar {
   margin-top: 2rem;
   grid-column: 3;
-  overflow: scroll;
+  overflow: auto;
+  height: 100vh;
+  position: sticky;
+  top: 0;
 }
 @media (max-width: 600px) {
   .container {
