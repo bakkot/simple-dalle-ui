@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <meta charset="utf-8" />
 <title>GPT-Image-1</title>
-<script src="page.js"></script>
+<script src="page.js" defer></script>
 <style>
   :root {
     --text-color: #404040;
@@ -238,12 +238,30 @@
     max-width: 128px;
     max-height: 128px;
   }
+
+  #user-confirm-box {
+    font-size: 1.2rem;
+    float: right;
+  }
 </style>
+
+<dialog class="user">
+  Enter the username you were given:<br>
+  <input autofocus class="user-input" size=56 style="font-size:1.2rem"></input><br><br>
+  <span id="user-status"></span>
+  <span id="user-confirm-box">
+    <label for="save-user">remember me</label>
+    <input type="checkbox" id="save-user" checked></input>
+    &nbsp;
+    <input type="button" value="confirm" id="user-confirm"></input>
+  </span>
+</dialog>
 
 <dialog class="history-modal">
   <div class="close-history">×</div>
   <div class="modal-contents"></div>
 </dialog>
+
 
 <dialog class="confirm-delete-modal">
   Delete this image? This cannot be undone.

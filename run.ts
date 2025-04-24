@@ -11,6 +11,8 @@ let SAVE_OUTPUTS = true; // save outputs locally
 let OPENAI_API_KEY = fs.readFileSync(path.join(import.meta.dirname, 'OPENAI_KEY.txt'), 'utf8').trim();
 let openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
+let ALLOWED_USERS = fs.readFileSync(path.join(import.meta.dirname, 'ALLOWED_USERS.txt'), 'utf8').split('\n').map(x => x.trim()).filter(x => x.length > 0);
+
 let outdir = path.join(import.meta.dirname, 'outputs');
 if (SAVE_OUTPUTS) {
   fs.mkdirSync(outdir, { recursive: true });
@@ -28,13 +30,27 @@ for (let file of ['page.js', 'save-worker.js']) {
   });
 }
 
+app.post('/check-user', (req, res) => {
+  let { user } = req.body;
+  if (ALLOWED_USERS.includes(user)) {
+    res.send('ok');
+  } else {
+    res.send('fail');
+  }
+});
+
 app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), async (req, res) => {
+  let { prompt, ts, quality, user } = req.body;
+  if (!ALLOWED_USERS.includes(user)) {
+    res.status(403);
+    res.send('unknown user');
+    return;
+  }
   console.log('working...');
-  let { prompt, ts, quality } = req.body;
 
   if (SAVE_OUTPUTS) {
     fs.writeFileSync(path.join(outdir, `${ts}--prompt.txt`), prompt, 'utf8');
-    fs.writeFileSync(path.join(outdir, `${ts}--settings.txt`), `quality: ${quality}\n`, 'utf8');
+    fs.writeFileSync(path.join(outdir, `${ts}--settings.txt`), `user: ${user}\nquality: ${quality}\n`, 'utf8');
   }
 
   let result;

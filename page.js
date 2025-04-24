@@ -179,6 +179,7 @@ async function submit() {
     body.set('prompt', prompt);
     body.set('ts', ts);
     body.set('quality', quality);
+    body.set('user', user);
     for (let image of inputImages) {
       body.append('images', image);
     }
@@ -478,4 +479,76 @@ function addImage(file) {
   imagePreviews.appendChild(previewContainer);
 
   reader.readAsDataURL(file);
+}
+
+let user;
+let userDialog = document.querySelector('.user');
+let userStatus = document.querySelector('#user-status');
+
+let userInput = userDialog.querySelector('.user-input');
+
+async function isUserGood(user) {
+  try {
+    let res = await fetch('check-user', { method: 'post', body: JSON.stringify({ user }), headers: { 'content-type': 'application/json' } });
+    if (!res.ok) {
+      return { good: false, error: 'network request failed' };
+    }
+    res = await res.text();
+    if (res === 'ok') {
+      return { good: true, error: null };
+    } else if (res === 'fail') {
+      return { good: false, error: 'unrecognized user' };
+    } else {
+      return { good: false, error: 'unknown error' };
+    }
+  } catch (e) {
+    return { good: false, error: 'network request failed' };
+  }
+}
+
+async function confirmUser() {
+  let attemptedUser = userInput.value.trim();
+  userStatus.style.color = 'initial';
+  userStatus.innerText = 'checking...';
+
+  let { good, error } = await isUserGood(attemptedUser);
+  if (good) {
+    user = attemptedUser;
+    userStatus.innerText = 'ok!';
+    if (document.querySelector('#save-user').checked) {
+      localStorage.setItem('chatgpt-ui-user', user);
+    }
+    setTimeout(() => userDialog.close(), 500);
+  } else {
+    userStatus.style.color = 'red';
+    userStatus.innerText = error;
+  }
+}
+
+userInput.addEventListener('keydown', e => {
+  if (e.code === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+    e.preventDefault();
+    confirmUser();
+  }
+});
+
+userDialog.querySelector('#user-confirm')
+  .addEventListener('click', confirmUser);
+
+userDialog.addEventListener('cancel', e => {
+    e.preventDefault();
+});
+
+let savedUser = localStorage.getItem('chatgpt-ui-user');
+if (savedUser != null) {
+  (async () => {
+    let { good } = await isUserGood(savedUser);
+    if (good) {
+      user = savedUser;
+    } else {
+      userDialog.showModal();
+    }
+  })();
+} else {
+  userDialog.showModal();
 }
