@@ -1,7 +1,5 @@
 'use strict';
 
-let USES_SERVER = false; // change to true if self-hosting
-
 let opfsDir = 'dalle';
 
 function makeSave() {
@@ -46,20 +44,21 @@ let removeActiveImage = () => {
 };
 
 let activeImg = null;
-function addHistoryItem(url, prompt, revised, ts, quality, style) {
+function addHistoryItem(blob, prompt, ts, quality) {
+  let url = URL.createObjectURL(blob);
   let box = document.createElement('span');
   box.classList.add('gallery-box');
   box.style.position = 'relative';
 
   let img = document.createElement('img');
   img.src = url;
-  img.width = 128;
-  img.height = 128;
-  img.alt = revised;
+  img.style.maxWidth = '128px';
+  img.style.maxHeight = '128px';
+  img.alt = prompt;
 
   img.addEventListener('click', () => {
     activeImg = img;
-    modal(url, prompt, revised, quality, style);
+    modal(url, prompt, quality);
   });
 
   box.append(img);
@@ -69,13 +68,17 @@ function addHistoryItem(url, prompt, revised, ts, quality, style) {
   trash.classList.add('trash');
   box.append(trash);
 
+  let plus = document.getElementById('plus-icon').cloneNode(true);
+  plus.style.display = '';
+  plus.classList.add('plus');
+  box.append(plus);
+
   trash.addEventListener('mousedown', async e => {
     async function remove() {
       let opfsRoot = await navigator.storage.getDirectory();
       let dalleDir = await opfsRoot.getDirectoryHandle(opfsDir);
       await dalleDir.removeEntry(`${ts}--image.png`);
       await dalleDir.removeEntry(`${ts}--prompt.txt`);
-      await dalleDir.removeEntry(`${ts}--revised.txt`);
       try {
         await dalleDir.removeEntry(`${ts}--settings.txt`);
       } catch {
@@ -93,10 +96,14 @@ function addHistoryItem(url, prompt, revised, ts, quality, style) {
     }
   });
 
+  plus.addEventListener('click', () => {
+    addImage(blob);
+  });
+
   document.querySelector('.gallery').append(box);
 }
 
-function modal(url, prompt, revised, quality, style) {
+function modal(url, prompt, quality) {
   let modal = document.querySelector('.history-modal');
 
   let contents = modal.querySelector('.modal-contents');
@@ -106,23 +113,16 @@ function modal(url, prompt, revised, quality, style) {
   p.innerText = prompt;
   contents.append(p);
 
-  if (quality !== 'standard' || style !== 'natural') {
-    let p = document.createElement('p');
-    let extra = [...(quality !== 'standard' ? [quality] : []), ...(style !== 'natural' ? [style] : [])].join(', ');
-    p.innerText = `(${extra})`;
-    contents.append(p);
-  }
+  let p2 = document.createElement('p');
+  p2.innerText = `(quality: ${quality})`;
+  contents.append(p2);
 
   let img = document.createElement('img');
   img.src = url;
   img.width = 512;
   img.height = 512;
-  img.alt = revised;
+  img.alt = prompt;
   contents.append(img);
-
-  let bq = document.createElement('blockquote');
-  bq.innerText = revised;
-  contents.append(bq);
 
   modal.showModal();
 }
@@ -149,10 +149,6 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// only used if USES_SERVER === false;
-// set during init
-let apiKey;
-
 let working = false;
 async function submit() {
   if (working) return;
@@ -175,54 +171,29 @@ async function submit() {
   let spinner = document.querySelector('.spinner');
   spinner.style.display = 'flex';
 
-  let quality = document.querySelector('#hd').checked ? 'hd' : 'standard';
-  let style = document.querySelector('#vivid').checked ? 'vivid' : 'natural';
+  let quality = document.querySelector('input[name="quality"]:checked').value;
 
   try {
     let ts = new Date().toISOString().replace(/:/g, '_');
-    let res;
-    if (USES_SERVER) {
-      let message = {
-        prompt,
-        ts,
-        quality,
-        style,
-      };
-      res = await (
-        await fetch('./image', {
-          method: 'post',
-          body: JSON.stringify(message),
-          headers: { 'content-type': 'application/json' },
-        })
-      ).json();
-    } else {
-      res = await (
-        await fetch('https://api.openai.com/v1/images/generations', {
-          method: 'post',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: 'dall-e-3',
-            prompt,
-            n: 1,
-            size: '1024x1024',
-            response_format: 'b64_json',
-            quality,
-            style,
-          }),
-        })
-      ).json();
+    let body = new FormData();
+    body.set('prompt', prompt);
+    body.set('ts', ts);
+    body.set('quality', quality);
+    for (let image of inputImages) {
+      body.append('images', image);
     }
+    let res = await (
+      await fetch('./image', {
+        method: 'post',
+        body,
+      })
+    ).json();
 
     if (res.error) {
       throw new Error(res.error.message);
     }
 
-    console.log(res);
-
-    let { b64_json, revised_prompt } = res.data[0];
+    let { b64_json } = res.data[0];
 
     let data = base64ToUint8Array(b64_json);
     let blob = new Blob([data], { type: 'image/png' });
@@ -233,14 +204,12 @@ async function submit() {
     img.height = 512;
 
     output.prepend(img);
-    bq.innerText = revised_prompt;
 
-    addHistoryItem(url, prompt, revised_prompt, ts, quality, style);
+    addHistoryItem(blob, prompt, ts, quality);
 
     await save([opfsDir], `${ts}--image.png`, data);
     await save([opfsDir], `${ts}--prompt.txt`, new TextEncoder().encode(prompt));
-    await save([opfsDir], `${ts}--settings.txt`, new TextEncoder().encode(`quality: ${quality}\nstyle: ${style}\n`));
-    await save([opfsDir], `${ts}--revised.txt`, new TextEncoder().encode(revised_prompt));
+    await save([opfsDir], `${ts}--settings.txt`, new TextEncoder().encode(`quality: ${quality}\n`));
   } catch (e) {
     console.error(e);
     bq.innerText = 'ERROR: ' + e.message;
@@ -251,6 +220,8 @@ async function submit() {
   output.style.display = '';
   spinner.style.display = '';
 }
+
+let inputImages = [];
 
 addEventListener('DOMContentLoaded', async () => {
   // history dialog
@@ -284,7 +255,7 @@ addEventListener('DOMContentLoaded', async () => {
 
   // API key dialog
 
-  if (!USES_SERVER) {
+  if (false) {
     let apiKeyDialog = document.querySelector('.api-key');
     apiKeyDialog.addEventListener('click', dismiss(apiKeyDialog));
 
@@ -323,6 +294,21 @@ addEventListener('DOMContentLoaded', async () => {
 
   document.querySelector('.send-button-container').addEventListener('click', submit);
 
+  // image previews
+
+  let imageUpload = document.getElementById('imageUpload');
+
+  imageUpload.addEventListener('change', function () {
+    let files = this.files;
+    for (let i = 0; i < files.length; i++) {
+      let file = files.item(i);
+      if (file) {
+        addImage(file);
+      }
+    }
+    this.value = '';
+  });
+
   // populate gallery
 
   let opfsRoot = await navigator.storage.getDirectory();
@@ -339,8 +325,8 @@ addEventListener('DOMContentLoaded', async () => {
     obj[type] = handle;
   }
   for (let [ts, handles] of Object.entries(old).sort((a, b) => (a[0] > b[0] ? 1 : -1))) {
-    let { 'image.png': imageH, 'prompt.txt': promptH, 'revised.txt': revisedH, 'settings.txt': settingsH } = handles;
-    if (imageH == null || promptH == null || revisedH == null) {
+    let { 'image.png': imageH, 'prompt.txt': promptH, 'settings.txt': settingsH } = handles;
+    if (imageH == null || promptH == null) {
       // presumably an error saving, I guess? might as well clean up
       for (let name of Object.keys(handles)) {
         await dalleDir.removeEntry(`${ts}--${name}`);
@@ -349,11 +335,10 @@ addEventListener('DOMContentLoaded', async () => {
     }
     let image = await imageH.getFile();
     let prompt = await (await promptH.getFile()).text();
-    let revised = await (await revisedH.getFile()).text();
-    let settings = settingsH ? await (await settingsH.getFile()).text() : `quality: standard\nstyle: vivid\n`;
-    let { quality, style } = settings.match(/quality: (?<quality>\w+)\nstyle: (?<style>\w+)/).groups;
+    let settings = settingsH ? await (await settingsH.getFile()).text() : `quality: medium\n`;
+    let { quality } = settings.match(/quality: (?<quality>\w+)/).groups;
 
-    addHistoryItem(URL.createObjectURL(image), prompt, revised, ts, quality, style);
+    addHistoryItem(image, prompt, ts, quality);
   }
 });
 
@@ -464,4 +449,33 @@ function base64ToUint8Array(string, options) {
   }
 
   return new Uint8Array(result);
+}
+
+function addImage(file) {
+  inputImages.push(file);
+
+  let reader = new FileReader();
+  let previewContainer = document.createElement('div');
+  previewContainer.classList.add('image-preview-container');
+  let img = document.createElement('img');
+  img.classList.add('image-preview');
+
+  let removeButton = document.getElementById('trash-icon').cloneNode(true);
+  removeButton.style.display = '';
+  removeButton.classList.add('trash');
+
+  reader.onload = function (event) {
+    img.src = event.target.result;
+  };
+
+  removeButton.addEventListener('click', function () {
+    previewContainer.remove();
+    inputImages.splice(inputImages.indexOf(file), 1);
+  });
+
+  previewContainer.appendChild(img);
+  previewContainer.appendChild(removeButton);
+  imagePreviews.appendChild(previewContainer);
+
+  reader.readAsDataURL(file);
 }

@@ -1,27 +1,19 @@
-# Simple DALL-E UI
+# Simple DALL-E/gpt-image-1 UI
 
-A simple static webpage to wrap OpenAI's image-generating DALL-E API.
-
-If you have your own OpenAI API key, you can try it <a href="https://bakkot.github.io/simple-dalle-ui">here</a>.
+A simple static webpage to wrap OpenAI's image-generating gpt-image-1 API. You can dig the DALL-E wrapper out of the commit history if you like the old one better.
 
 ![screenshot](./screenshot.png)
 
-
-## TODO
-
-Doesn't support changing sizes.
-
 ## Deploying
 
-If you want to deploy this locally so you don't have to enter the key every time, a trivial server is included. Letting people access a hosted copy will give them the ability to generate images, but not otherwise access your key.
+Ensure you have a reasonably recent version of node installed. Then
 
-When deployed locally all generated images will be saved to disk, unless you change `SAVE_OUTPUTS` to `false`.
+```sh
+npm ci
+node run.mts
+```
 
-- Clone the repo
-- `npm install` to install dependencies
-- Edit `page.js` to have `USES_SERVER = true` instead of `false`
-- Put your OpenAI key in a file named `OPENAI_KEY.txt`
-- `node run.js`
+If you are using a version of node prior to 23.6.0, you will likely need to include `--experimental-strip-types` after the `node` command.
 
 
 ## Implementation details

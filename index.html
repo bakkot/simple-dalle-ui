@@ -1,202 +1,243 @@
-<!doctype html>
-<meta charset="utf-8"/>
-<title>DALL•E</title>
+<!DOCTYPE html>
+<meta charset="utf-8" />
+<title>GPT-Image-1</title>
 <script src="page.js"></script>
 <style>
+  :root {
+    --text-color: #404040;
+  }
+  body {
+    font-family: system, -apple-system, system-ui, BlinkMacSystemFont, sans-serif;
+    color: var(--text-color);
+    font-size: 1.2rem;
+  }
 
-:root {
-  --text-color: #404040;
-}
-body {
-  font-family: system,-apple-system,system-ui,BlinkMacSystemFont,sans-serif;
-  color: var(--text-color);
-  font-size: 1.2rem;
-}
+  .close-history {
+    position: absolute;
+    top: 0.5em;
+    right: 0.7em;
+    color: grey;
+    cursor: pointer;
+  }
 
-.close-history {
-  position: absolute;
-  top: .5em;
-  right: .7em;
-  color: grey;
-  cursor: pointer;
-}
-
-.container {
-  display: grid;
-  grid-column-gap: 10px;
-  grid-template-columns: 1fr 2fr minmax(100px, 1fr);
-  grid-column-gap: 2em;
-}
-.main-content {
-  margin-top: 2rem;
-  grid-column: 2;
-  overflow: scroll;
-}
-
-.history-sidebar {
-  margin-top: 2rem;
-  grid-column: 3;
-  overflow: auto;
-  height: 100vh;
-  position: sticky;
-  top: 0;
-}
-@media (max-width: 600px) {
   .container {
-    grid-template-columns: 0fr 1fr 0fr !important;
+    display: grid;
+    grid-column-gap: 10px;
+    grid-template-columns: 1fr 2fr minmax(100px, 1fr);
+    grid-column-gap: 2em;
   }
+  .main-content {
+    margin-top: 2rem;
+    grid-column: 2;
+    overflow: scroll;
+  }
+
   .history-sidebar {
-    grid-column: 2 !important;
+    margin-top: 2rem;
+    grid-column: 3;
+    overflow: auto;
+    height: 100vh;
+    position: sticky;
+    top: 0;
   }
-}
+  @media (max-width: 600px) {
+    .container {
+      grid-template-columns: 0fr 1fr 0fr !important;
+    }
+    .history-sidebar {
+      grid-column: 2 !important;
+    }
+  }
 
-.settings {
-  margin-top: 1em;
-  text-align: center;
-  color: dimgrey;
-  accent-color: currentColor;
-}
+  .settings {
+    margin-top: 1em;
+    text-align: center;
+    color: dimgrey;
+    accent-color: currentColor;
+  }
 
-.output {
-  margin-top: 2em;
-}
+  .output {
+    margin-top: 2em;
+  }
 
-.output > img, .history-modal img {
-  margin-left: auto;
-  margin-right: auto;
-  display: block;
-}
+  .output > img,
+  .history-modal img {
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+  }
 
-blockquote {
-  color: grey;
-}
+  blockquote {
+    color: grey;
+  }
 
-dialog {
-  max-width: 60rem;
-  outline: none;
-  border-radius: 5px;
-  box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
-}
+  dialog {
+    max-width: 60rem;
+    outline: none;
+    border-radius: 5px;
+    box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+  }
 
-a, a:visited {
-  color: #666;
-}
+  a,
+  a:visited {
+    color: #666;
+  }
 
-.confirm-buttons {
-  display: flex;
-  justify-content: center;
-  margin-top: 1em;
-}
+  .confirm-buttons {
+    display: flex;
+    justify-content: center;
+    margin-top: 1em;
+  }
 
-.confirm-buttons input {
-  font-size: 1.2rem;
-  margin-left: 2em;
-  margin-right: 2em;
-}
+  .confirm-buttons input {
+    font-size: 1.2rem;
+    margin-left: 2em;
+    margin-right: 2em;
+  }
 
-#api-key-confirm {
-  font-size: 1.2rem;
-  float: right;
-}
+  #api-key-confirm {
+    font-size: 1.2rem;
+    float: right;
+  }
 
-.gallery {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1em;
-}
+  .gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1em;
+  }
 
-.gallery-box:hover .trash {
-  display: initial;
-}
+  .image-preview-container:hover .trash,
+  .gallery-box:hover .trash,
+  .gallery-box:hover .plus {
+    display: initial;
+  }
 
-.trash {
-  display: none;
-  position: absolute;
-  top: .4em;
-  right: .4em;
-  background-color: rgba(255, 255, 255, 0.8);
-  border-radius: 50%;
-  padding: .2em;
-  border: 1px dashed grey;
-  cursor: pointer;
-}
+  .plus,
+  .trash {
+    display: none;
+    position: absolute;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    padding: 0.2em;
+    border: 1px dashed grey;
+    cursor: pointer;
+  }
 
-.spinner {
-  display: none;
-  margin-top: 2em;
-  justify-content: center;
-}
+  .trash {
+    top: 0.4em;
+    right: 0.4em;
+  }
+  .plus {
+    top: 0.4em;
+    left: 0.4em;
+  }
 
-.footer {
-  position: fixed;
-  left: .2em;
-  bottom: .1em;
-  color: #ccc;
-}
+  .spinner {
+    display: none;
+    margin-top: 2em;
+    justify-content: center;
+  }
 
-.footer a, .footer a:visited {
-  color: #ccc;
-}
+  .link {
+    cursor: pointer;
+    text-decoration: underline;
+    color: #999;
+  }
 
+  .footer {
+    position: fixed;
+    left: 0.2em;
+    bottom: 0.1em;
+    color: #ccc;
+  }
 
-.input-container {
-  position: relative;
-}
-/* we need the wrapper because using padding on the textarea messes up the resizing */
-.input-wrapper {
-  border-radius: 5px;
-  padding: 0.8rem;
-  border: 1px solid #aaa;
-  box-shadow: 0px 0px 10px #aaa ;
-}
-.input:focus {
-  outline: none;
-}
-.send-button-container {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 0.3rem;
-  display: flex;
-  align-items: center;
-}
-.send-button {
-  background: inherit;
-  padding: 0.3rem;
-  border: none;
-  font-size: 1.6rem;
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-}
-.send-button:hover {
-  background: #ddd;
-}
-.send-button:active {
-  margin-top: 2px;
-}
-/* https://css-tricks.com/the-cleanest-trick-for-autogrowing-textareas/ */
-.grow-wrap {
-  display: grid;
-}
-.grow-wrap::after {
-  content: attr(data-replicated-value) " ";
-  white-space: pre-wrap;
-  visibility: hidden;
-}
-.grow-wrap > textarea {
-  resize: none;
-  overflow: hidden;
-}
-.grow-wrap > textarea,
-.grow-wrap::after {
-  padding: 0.5rem;
-  border-radius: 5px;
-  border: none;
-  font: inherit;
-  font-size: 1.2rem;
-  grid-area: 1 / 1 / 2 / 2;
-}
+  .footer a,
+  .footer a:visited {
+    color: #ccc;
+  }
+
+  .input-container {
+    position: relative;
+  }
+  /* we need the wrapper because using padding on the textarea messes up the resizing */
+  .input-wrapper {
+    border-radius: 5px;
+    padding: 0.8rem;
+    border: 1px solid #aaa;
+    box-shadow: 0px 0px 10px #aaa;
+  }
+  .input:focus {
+    outline: none;
+  }
+  .send-button-container {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0.3rem;
+    display: flex;
+    align-items: center;
+  }
+  .send-button {
+    background: inherit;
+    padding: 0.3rem;
+    border: none;
+    font-size: 1.6rem;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+  }
+  .send-button:hover {
+    background: #ddd;
+  }
+  .send-button:active {
+    margin-top: 2px;
+  }
+  .image-inputs {
+    text-align: center;
+    padding-top: 0.4rem;
+  }
+  /* https://css-tricks.com/the-cleanest-trick-for-autogrowing-textareas/ */
+  .grow-wrap {
+    display: grid;
+  }
+  .grow-wrap::after {
+    content: attr(data-replicated-value) ' ';
+    white-space: pre-wrap;
+    visibility: hidden;
+  }
+  .grow-wrap > textarea {
+    resize: none;
+    overflow: hidden;
+  }
+  .grow-wrap > textarea,
+  .grow-wrap::after {
+    padding: 0.5rem;
+    border-radius: 5px;
+    border: none;
+    font: inherit;
+    font-size: 1.2rem;
+    grid-area: 1 / 1 / 2 / 2;
+  }
+
+  #imagePreviews {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .image-preview-container {
+    position: relative;
+    border: 1px solid #ccc;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .image-preview {
+    max-width: 128px;
+    max-height: 128px;
+  }
 </style>
 
 <dialog class="history-modal">
@@ -209,18 +250,22 @@ a, a:visited {
   <p>Tip: hold "shift" while clicking the trash icon to skip this confirmation.</p>
   <div class="confirm-buttons">
     <form method="dialog">
-      <input type="button" value="cancel" id="confirm-cancel"><input type="button" autofocus value="delete" id="confirm-delete">
+      <input type="button" value="cancel" id="confirm-cancel" /><input
+        type="button"
+        autofocus
+        value="delete"
+        id="confirm-delete"
+      />
     </form>
   </div>
 </dialog>
 
 <dialog class="api-key">
-  Enter your <a href="https://platform.openai.com/api-keys">OpenAI API key</a>:<br>
-  (only do this if you trust me or have reviewed the source!)<br><br>
-  <input autofocus class="api-key-input" size=56 style="font-size:1.2rem"><br><br>
-  <input type="button" value="confirm" id="api-key-confirm">
+  Enter your <a href="https://platform.openai.com/api-keys">OpenAI API key</a>:<br />
+  (only do this if you trust me or have reviewed the source!)<br /><br />
+  <input autofocus class="api-key-input" size="56" style="font-size: 1.2rem" /><br /><br />
+  <input type="button" value="confirm" id="api-key-confirm" />
 </dialog>
-
 
 <div class="container">
   <div class="main-content">
@@ -237,10 +282,26 @@ a, a:visited {
       </div>
     </div>
 
+    <div id="imagePreviews">
+    </div>
+
+    <div class="image-inputs">
+      <label for="imageUpload"><span class="link">attach images</span></label>
+      <input type="file" id="imageUpload" name="images" accept="image/*" multiple style="display: none" />
+    </div>
+
     <div class="settings">
-      <input type="checkbox" id="hd"> <label for="hd">hd</label>
-      &nbsp;&nbsp;&nbsp;&nbsp;<!--I'm lazy, this works-->
-      <input type="checkbox" id="vivid" checked> <label for="vivid">vivid</label>
+      <div>
+        quality:
+        <input type="radio" id="low" name="quality" value="low" checked>
+        <label for="low">low</label>
+
+        <input type="radio" id="medium" name="quality" value="medium">
+        <label for="medium">medium</label>
+
+        <input type="radio" id="high" name="quality" value="high">
+        <label for="high">high</label>
+      </div>
     </div>
 
     <div class="output">
@@ -255,8 +316,7 @@ a, a:visited {
   </div>
 
   <div class="history-sidebar">
-    <div class="gallery">
-    </div>
+    <div class="gallery"></div>
   </div>
 </div>
 
@@ -264,6 +324,8 @@ a, a:visited {
   <a href="https://github.com/bakkot/simple-dalle-ui">source</a>
 </div>
 
-<!-- trash icon from Feather: https://github.com/feathericons/feather/blob/593b3bf516087d07d362280b34ec1a5383e71572/LICENSE -->
+<!-- icons from Feather: https://github.com/feathericons/feather/blob/593b3bf516087d07d362280b34ec1a5383e71572/LICENSE -->
 <!-- prettier-ignore -->
 <svg id="trash-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-trash-2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+<!-- prettier-ignore -->
+<svg id="plus-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
