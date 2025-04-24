@@ -7,7 +7,7 @@ let opfsDir = 'dalle';
 function makeSave() {
   let worker = new Worker('save-worker.js');
 
-  let promiseMap = new Map;
+  let promiseMap = new Map();
   let runningIdx = 0;
 
   worker.addEventListener('message', event => {
@@ -64,7 +64,6 @@ function addHistoryItem(url, prompt, revised, ts, quality, style) {
 
   box.append(img);
 
-
   let trash = document.getElementById('trash-icon').cloneNode(true);
   trash.style.display = '';
   trash.classList.add('trash');
@@ -79,7 +78,9 @@ function addHistoryItem(url, prompt, revised, ts, quality, style) {
       await dalleDir.removeEntry(`${ts}--revised.txt`);
       try {
         await dalleDir.removeEntry(`${ts}--settings.txt`);
-      } catch { /* probably predates settings */ }
+      } catch {
+        /* probably predates settings */
+      }
 
       box.remove();
     }
@@ -107,10 +108,7 @@ function modal(url, prompt, revised, quality, style) {
 
   if (quality !== 'standard' || style !== 'natural') {
     let p = document.createElement('p');
-    let extra = [
-      ...quality !== 'standard' ? [quality] : [],
-      ...style !== 'natural' ? [style] : [],
-    ].join(', ');
+    let extra = [...(quality !== 'standard' ? [quality] : []), ...(style !== 'natural' ? [style] : [])].join(', ');
     p.innerText = `(${extra})`;
     contents.append(p);
   }
@@ -151,7 +149,6 @@ document.addEventListener('keydown', e => {
   }
 });
 
-
 // only used if USES_SERVER === false;
 // set during init
 let apiKey;
@@ -182,7 +179,7 @@ async function submit() {
   let style = document.querySelector('#vivid').checked ? 'vivid' : 'natural';
 
   try {
-    let ts = (new Date).toISOString().replace(/:/g, '_');
+    let ts = new Date().toISOString().replace(/:/g, '_');
     let res;
     if (USES_SERVER) {
       let message = {
@@ -191,28 +188,32 @@ async function submit() {
         quality,
         style,
       };
-      res = await (await fetch('./image', {
-        method: 'post',
-        body: JSON.stringify(message),
-        headers: { 'content-type': 'application/json' }
-      })).json();
+      res = await (
+        await fetch('./image', {
+          method: 'post',
+          body: JSON.stringify(message),
+          headers: { 'content-type': 'application/json' },
+        })
+      ).json();
     } else {
-      res = await (await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'post',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'dall-e-3',
-          prompt,
-          n: 1,
-          size: '1024x1024',
-          response_format: 'b64_json',
-          quality,
-          style,
-        }),
-      })).json()
+      res = await (
+        await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'post',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'dall-e-3',
+            prompt,
+            n: 1,
+            size: '1024x1024',
+            response_format: 'b64_json',
+            quality,
+            style,
+          }),
+        })
+      ).json();
     }
 
     if (res.error) {
@@ -237,9 +238,9 @@ async function submit() {
     addHistoryItem(url, prompt, revised_prompt, ts, quality, style);
 
     await save([opfsDir], `${ts}--image.png`, data);
-    await save([opfsDir], `${ts}--prompt.txt`, (new TextEncoder).encode(prompt));
-    await save([opfsDir], `${ts}--settings.txt`, (new TextEncoder).encode(`quality: ${quality}\nstyle: ${style}\n`));
-    await save([opfsDir], `${ts}--revised.txt`, (new TextEncoder).encode(revised_prompt));
+    await save([opfsDir], `${ts}--prompt.txt`, new TextEncoder().encode(prompt));
+    await save([opfsDir], `${ts}--settings.txt`, new TextEncoder().encode(`quality: ${quality}\nstyle: ${style}\n`));
+    await save([opfsDir], `${ts}--revised.txt`, new TextEncoder().encode(revised_prompt));
   } catch (e) {
     console.error(e);
     bq.innerText = 'ERROR: ' + e.message;
@@ -258,36 +259,28 @@ addEventListener('DOMContentLoaded', async () => {
   // surely there's a better way
   let dismiss = modal => e => {
     let dims = modal.getBoundingClientRect();
-    if (
-      e.clientX < dims.left ||
-      e.clientX > dims.right ||
-      e.clientY < dims.top ||
-      e.clientY > dims.bottom
-    ) {
+    if (e.clientX < dims.left || e.clientX > dims.right || e.clientY < dims.top || e.clientY > dims.bottom) {
       modal.close();
     }
   };
   history.addEventListener('click', dismiss(history));
 
-  document.querySelector('.close-history')
-    .addEventListener('click', () => { history.close(); });
-
+  document.querySelector('.close-history').addEventListener('click', () => {
+    history.close();
+  });
 
   // delete-confirmation dialog
 
   let confirmDelete = document.querySelector('.confirm-delete-modal');
   confirmDelete.addEventListener('click', dismiss(confirmDelete));
 
-  confirmDelete.querySelector('#confirm-cancel')
-    .addEventListener('click', () => {
-      confirmDelete.close();
-    });
-  confirmDelete.querySelector('#confirm-delete')
-    .addEventListener('click', () => {
-      confirmDelete.close();
-      removeActiveImage();
-    });
-
+  confirmDelete.querySelector('#confirm-cancel').addEventListener('click', () => {
+    confirmDelete.close();
+  });
+  confirmDelete.querySelector('#confirm-delete').addEventListener('click', () => {
+    confirmDelete.close();
+    removeActiveImage();
+  });
 
   // API key dialog
 
@@ -308,13 +301,11 @@ addEventListener('DOMContentLoaded', async () => {
       }
     });
 
-    apiKeyDialog.querySelector('#api-key-confirm')
-      .addEventListener('click', confirmKey);
+    apiKeyDialog.querySelector('#api-key-confirm').addEventListener('click', confirmKey);
 
     apiKeyDialog.showModal();
     apiKeyDialog.querySelector('a').blur();
   }
-
 
   // input
 
@@ -330,15 +321,13 @@ addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  document.querySelector('.send-button-container')
-    .addEventListener('click', submit);
-
+  document.querySelector('.send-button-container').addEventListener('click', submit);
 
   // populate gallery
 
   let opfsRoot = await navigator.storage.getDirectory();
 
-  let dalleDir = await opfsRoot.getDirectoryHandle(opfsDir, {create: true});
+  let dalleDir = await opfsRoot.getDirectoryHandle(opfsDir, { create: true });
 
   let old = { __proto__: null };
   for await (let [name, handle] of dalleDir) {
@@ -349,7 +338,7 @@ addEventListener('DOMContentLoaded', async () => {
 
     obj[type] = handle;
   }
-  for (let [ts, handles] of Object.entries(old).sort((a, b) => a[0] > b[0] ? 1 : -1)) {
+  for (let [ts, handles] of Object.entries(old).sort((a, b) => (a[0] > b[0] ? 1 : -1))) {
     let { 'image.png': imageH, 'prompt.txt': promptH, 'revised.txt': revisedH, 'settings.txt': settingsH } = handles;
     if (imageH == null || promptH == null || revisedH == null) {
       // presumably an error saving, I guess? might as well clean up
@@ -373,7 +362,6 @@ async function clearFS() {
   let opfsRoot = await navigator.storage.getDirectory();
   await opfsRoot.removeEntry(opfsDir, { recursive: true });
 }
-
 
 // https://github.com/tc39/proposal-arraybuffer-base64/blob/ed073ef6bf63b6bb0e081e338bddf551f6a722c8/playground/polyfill-core.mjs
 let base64Characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -458,17 +446,9 @@ function base64ToUint8Array(string, options) {
     let c2 = input[i + 1];
     let c3 = input[i + 2];
     let c4 = input[i + 3];
-    let triplet =
-      (map.get(c1) << 18) +
-      (map.get(c2) << 12) +
-      (map.get(c3) << 6) +
-      map.get(c4);
+    let triplet = (map.get(c1) << 18) + (map.get(c2) << 12) + (map.get(c3) << 6) + map.get(c4);
 
-    result.push(
-      (triplet >> 16) & 255,
-      (triplet >> 8) & 255,
-      triplet & 255
-    );
+    result.push((triplet >> 16) & 255, (triplet >> 8) & 255, triplet & 255);
   }
 
   if (lastChunkSize === 2) {
