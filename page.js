@@ -191,7 +191,8 @@ async function submit() {
     ).json();
 
     if (res.error) {
-      throw new Error(res.error.message);
+      let message = res.error.message ?? res.error ?? 'unknown error';
+      throw new Error(message);
     }
 
     let { b64_json } = res.data[0];
@@ -201,8 +202,8 @@ async function submit() {
     let url = URL.createObjectURL(blob);
     let img = document.createElement('img');
     img.src = url;
-    img.width = 512;
-    img.height = 512;
+    img.style.maxWidth = '512px';
+    img.style.maxHeight = '512px';
 
     output.prepend(img);
 

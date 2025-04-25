@@ -54,24 +54,32 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
   }
 
   let result;
-  if (Array.isArray(req.files) && req.files.length > 0) {
-    result = await openai.images.edit({
-      model: 'gpt-image-1',
-      prompt,
-      image: await Promise.all(req.files.map(f => OpenAI.toFile(f.buffer, f.originalname, { type: f.mimetype }))),
-      quality,
-    });
-  } else {
-    result = await openai.images.generate({
-      model: 'gpt-image-1',
-      prompt,
-      size: '1024x1024',
-      moderation: 'low',
-      quality,
-    });
+  try {
+    if (Array.isArray(req.files) && req.files.length > 0) {
+      result = await openai.images.edit({
+        model: 'gpt-image-1',
+        prompt,
+        image: await Promise.all(req.files.map(f => OpenAI.toFile(f.buffer, f.originalname, { type: f.mimetype }))),
+        quality,
+      });
+    } else {
+      result = await openai.images.generate({
+        model: 'gpt-image-1',
+        prompt,
+        size: '1024x1024',
+        moderation: 'low',
+        quality,
+      });
+    }
+  } catch (e) {
+    console.log(e);
+    // @ts-expect-error
+    res.json({ error: e?.message ?? e?.error?.message ?? e?.toString() ?? 'unknown error' });
+    return;
   }
 
-  console.log(result);
+  console.log('done');
+  // console.log(result);
 
   const image_base64 = result.data![0].b64_json!;
 
