@@ -3,13 +3,16 @@ import * as path from 'node:path';
 import express from 'express';
 import multer from 'multer';
 import OpenAI from 'openai';
+import Replicate, { type FileOutput } from 'replicate';
 
 let PORT = 31482; // 'oai' in base 36
 
 let SAVE_OUTPUTS = true; // save outputs locally
 
 let OPENAI_API_KEY = fs.readFileSync(path.join(import.meta.dirname, 'OPENAI_KEY.txt'), 'utf8').trim();
+let REPLICATE_API_KEY = fs.readFileSync(path.join(import.meta.dirname, 'REPLICATE_KEY.txt'), 'utf8').trim();
 let openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+let replicate = new Replicate({ auth: REPLICATE_API_KEY });
 
 let ALLOWED_USERS = fs.readFileSync(path.join(import.meta.dirname, 'ALLOWED_USERS.txt'), 'utf8').split('\n').map(x => x.trim()).filter(x => x.length > 0);
 
@@ -40,7 +43,7 @@ app.post('/check-user', (req, res) => {
 });
 
 app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), async (req, res) => {
-  let { prompt, ts, quality, user } = req.body;
+  let { prompt, ts, service, user } = req.body;
   if (!ALLOWED_USERS.includes(user)) {
     res.status(403);
     res.send('unknown user');
@@ -50,26 +53,45 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
 
   if (SAVE_OUTPUTS) {
     fs.writeFileSync(path.join(outdir, `${ts}--prompt.txt`), prompt, 'utf8');
-    fs.writeFileSync(path.join(outdir, `${ts}--settings.txt`), `user: ${user}\nquality: ${quality}\n`, 'utf8');
+    fs.writeFileSync(path.join(outdir, `${ts}--settings.txt`), `user: ${user}\service: ${service}\n`, 'utf8');
   }
 
-  let result;
+  let image_base64: string;
   try {
-    if (Array.isArray(req.files) && req.files.length > 0) {
-      result = await openai.images.edit({
-        model: 'gpt-image-1',
-        prompt,
-        image: await Promise.all(req.files.map(f => OpenAI.toFile(f.buffer, f.originalname, { type: f.mimetype }))),
-        quality,
-      });
+    if (service === 'openai') {
+      let res;
+      if (Array.isArray(req.files) && req.files.length > 0) {
+        res = await openai.images.edit({
+          model: 'gpt-image-1',
+          prompt,
+          image: await Promise.all(req.files.map(f => OpenAI.toFile(f.buffer, f.originalname, { type: f.mimetype }))),
+          quality: 'high',
+        });
+      } else {
+        res = await openai.images.generate({
+          model: 'gpt-image-1',
+          prompt,
+          size: '1024x1024',
+          moderation: 'low',
+          quality: 'high',
+        });
+      }
+      image_base64 = res.data![0].b64_json!;
+    } else if (service === 'kontext') {
+      if (!Array.isArray(req.files) || req.files?.length !== 1) {
+        throw new Error('kontext expects exactly one image as input');
+      }
+      let f = req.files[0];
+      let res = await replicate.run('black-forest-labs/flux-kontext-pro', {
+        input: {
+          prompt,
+          input_image: `data:${f.mimetype};base64,${f.buffer.toString('base64')}`,
+        },
+      }) as FileOutput;
+      let blob = await res.blob();
+      image_base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
     } else {
-      result = await openai.images.generate({
-        model: 'gpt-image-1',
-        prompt,
-        size: '1024x1024',
-        moderation: 'low',
-        quality,
-      });
+      throw new Error(`unknown service ${service}`);
     }
   } catch (e) {
     console.log(e);
@@ -81,14 +103,12 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
   console.log('done');
   // console.log(result);
 
-  const image_base64 = result.data![0].b64_json!;
-
-  if (SAVE_OUTPUTS && result.data?.[0]?.b64_json) {
+  if (SAVE_OUTPUTS) {
     // Save the image to a file
     fs.writeFileSync(path.join(outdir, `${ts}--image.png`), Buffer.from(image_base64, 'base64'));
   }
 
-  res.json(result);
+  res.json({ b64: image_base64 });
 });
 
 app.listen(PORT);

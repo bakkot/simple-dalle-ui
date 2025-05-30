@@ -44,7 +44,7 @@ let removeActiveImage = () => {
 };
 
 let activeImg = null;
-function addHistoryItem(blob, prompt, ts, quality) {
+function addHistoryItem(blob, prompt, ts, service) {
   let url = URL.createObjectURL(blob);
   let box = document.createElement('span');
   box.classList.add('gallery-box');
@@ -58,7 +58,7 @@ function addHistoryItem(blob, prompt, ts, quality) {
 
   img.addEventListener('click', () => {
     activeImg = img;
-    modal(url, prompt, quality);
+    modal(url, prompt, service);
   });
 
   box.append(img);
@@ -103,7 +103,7 @@ function addHistoryItem(blob, prompt, ts, quality) {
   document.querySelector('.gallery').append(box);
 }
 
-function modal(url, prompt, quality) {
+function modal(url, prompt, service) {
   let modal = document.querySelector('.history-modal');
 
   let contents = modal.querySelector('.modal-contents');
@@ -114,13 +114,13 @@ function modal(url, prompt, quality) {
   contents.append(p);
 
   let p2 = document.createElement('p');
-  p2.innerText = `(quality: ${quality})`;
+  p2.innerText = `(service: ${service})`;
   contents.append(p2);
 
   let img = document.createElement('img');
   img.src = url;
-  img.width = 512;
-  img.height = 512;
+  img.style.maxWidth = '512px';
+  img.style.maxHeight = '512px';
   img.alt = prompt;
   contents.append(img);
 
@@ -157,6 +157,22 @@ async function submit() {
   let prompt = inputEle.value.trim();
   if (prompt === '') return;
 
+  let service = document.querySelector('input[name="service"]:checked').value;
+
+  localStorage.setItem('dalle-ui-service', service);
+
+  if (service === 'kontext' && inputImages.length !== 1) {
+    let errorModal = document.querySelector('.service-error-modal');
+    let errorMessage = document.querySelector('#service-error-message');
+    if (inputImages.length === 0) {
+      errorMessage.innerText = 'Kontext only does image editing; you need to attach an image.';
+    } else {
+      errorMessage.innerText = `Kontext only supports a single image as input.`;
+    }
+    errorModal.showModal();
+    return;
+  }
+
   working = true;
   inputEle.disabled = true;
 
@@ -171,14 +187,12 @@ async function submit() {
   let spinner = document.querySelector('.spinner');
   spinner.style.display = 'flex';
 
-  let quality = document.querySelector('input[name="quality"]:checked').value;
-
   try {
     let ts = new Date().toISOString().replace(/:/g, '_');
     let body = new FormData();
     body.set('prompt', prompt);
     body.set('ts', ts);
-    body.set('quality', quality);
+    body.set('service', service);
     body.set('user', user);
     for (let image of inputImages) {
       body.append('images', image);
@@ -195,9 +209,9 @@ async function submit() {
       throw new Error(message);
     }
 
-    let { b64_json } = res.data[0];
+    let { b64 } = res;
 
-    let data = base64ToUint8Array(b64_json);
+    let data = base64ToUint8Array(b64);
     let blob = new Blob([data], { type: 'image/png' });
     let url = URL.createObjectURL(blob);
     let img = document.createElement('img');
@@ -207,11 +221,11 @@ async function submit() {
 
     output.prepend(img);
 
-    addHistoryItem(blob, prompt, ts, quality);
+    addHistoryItem(blob, prompt, ts, service);
 
     await save([opfsDir], `${ts}--image.png`, data);
     await save([opfsDir], `${ts}--prompt.txt`, new TextEncoder().encode(prompt));
-    await save([opfsDir], `${ts}--settings.txt`, new TextEncoder().encode(`quality: ${quality}\n`));
+    await save([opfsDir], `${ts}--settings.txt`, new TextEncoder().encode(`service: ${service}\n`));
   } catch (e) {
     console.error(e);
     bq.innerText = 'ERROR: ' + e.message;
@@ -226,6 +240,14 @@ async function submit() {
 let inputImages = [];
 
 addEventListener('DOMContentLoaded', async () => {
+  let savedService = localStorage.getItem('dalle-ui-service');
+  if (savedService) {
+    let serviceRadio = document.querySelector(`input[name="service"][value="${savedService}"]`);
+    if (serviceRadio) {
+      serviceRadio.checked = true;
+    }
+  }
+
   // history dialog
 
   let history = document.querySelector('.history-modal');
@@ -253,6 +275,15 @@ addEventListener('DOMContentLoaded', async () => {
   confirmDelete.querySelector('#confirm-delete').addEventListener('click', () => {
     confirmDelete.close();
     removeActiveImage();
+  });
+
+  // service error dialog
+
+  let serviceErrorModal = document.querySelector('.service-error-modal');
+  serviceErrorModal.addEventListener('click', dismiss(serviceErrorModal));
+
+  serviceErrorModal.querySelector('#service-error-ok').addEventListener('click', () => {
+    serviceErrorModal.close();
   });
 
   // API key dialog
@@ -337,10 +368,12 @@ addEventListener('DOMContentLoaded', async () => {
     }
     let image = await imageH.getFile();
     let prompt = await (await promptH.getFile()).text();
-    let settings = settingsH ? await (await settingsH.getFile()).text() : `quality: medium\n`;
-    let { quality } = settings.match(/quality: (?<quality>\w+)/).groups;
+    let settings = settingsH ? await (await settingsH.getFile()).text() : `service: openai\n`;
+    let serviceMatch = settings.match(/service: (?<service>\w+)/);
+    let qualityMatch = settings.match(/quality: (?<quality>\w+)/);
+    let service = serviceMatch ? serviceMatch.groups.service : (qualityMatch ? qualityMatch.groups.quality : 'openai');
 
-    addHistoryItem(image, prompt, ts, quality);
+    addHistoryItem(image, prompt, ts, service);
   }
 });
 

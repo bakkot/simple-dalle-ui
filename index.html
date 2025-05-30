@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <meta charset="utf-8" />
-<title>GPT-Image-1</title>
+<title>Imager</title>
 <script src="page.js" defer></script>
 <style>
   :root {
@@ -278,6 +278,17 @@
   </div>
 </dialog>
 
+<dialog class="service-error-modal">
+  <div class="modal-contents">
+    <p id="service-error-message"></p>
+    <div class="confirm-buttons">
+      <form method="dialog">
+        <input type="button" value="OK" id="service-error-ok" autofocus />
+      </form>
+    </div>
+  </div>
+</dialog>
+
 <dialog class="api-key">
   Enter your <a href="https://platform.openai.com/api-keys">OpenAI API key</a>:<br />
   (only do this if you trust me or have reviewed the source!)<br /><br />
@@ -310,15 +321,12 @@
 
     <div class="settings">
       <div>
-        quality:
-        <input type="radio" id="low" name="quality" value="low">
-        <label for="low">low</label>
+        service:
+        <input type="radio" id="openai" name="service" value="openai" checked>
+        <label for="openai">openai</label>
 
-        <input type="radio" id="medium" name="quality" value="medium">
-        <label for="medium">medium</label>
-
-        <input type="radio" id="high" name="quality" value="high" checked>
-        <label for="high">high</label>
+        <input type="radio" id="kontext" name="service" value="kontext">
+        <label for="kontext">kontext</label>
       </div>
     </div>
 

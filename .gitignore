@@ -1,4 +1,6 @@
 node_modules/
 OPENAI_KEY.txt
+REPLICATE_KEY.txt
 outputs/
 ALLOWED_USERS.txt
+CLAUDE.md
