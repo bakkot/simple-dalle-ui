@@ -50,34 +50,54 @@ function addHistoryItem(blob, prompt, ts, service) {
   box.classList.add('gallery-box');
   box.style.position = 'relative';
 
-  let img = document.createElement('img');
-  img.src = url;
-  img.style.maxWidth = '128px';
-  img.style.maxHeight = '128px';
-  img.alt = prompt;
+  let element, isVideo = service === 'seedance';
 
-  img.addEventListener('click', () => {
-    activeImg = img;
+  if (isVideo) {
+    element = document.createElement('video');
+    element.src = url;
+    element.style.maxWidth = '128px';
+    element.style.maxHeight = '128px';
+    element.muted = true;
+    element.loop = true;
+    element.preload = 'metadata';
+  } else {
+    element = document.createElement('img');
+    element.src = url;
+    element.style.maxWidth = '128px';
+    element.style.maxHeight = '128px';
+    element.alt = prompt;
+  }
+
+  element.addEventListener('click', () => {
+    activeImg = element;
     modal(url, prompt, service);
   });
 
-  box.append(img);
+  box.append(element);
 
   let trash = document.getElementById('trash-icon').cloneNode(true);
   trash.style.display = '';
   trash.classList.add('trash');
   box.append(trash);
 
-  let plus = document.getElementById('plus-icon').cloneNode(true);
-  plus.style.display = '';
-  plus.classList.add('plus');
-  box.append(plus);
+  // Only add plus button for images, not videos
+  if (!isVideo) {
+    let plus = document.getElementById('plus-icon').cloneNode(true);
+    plus.style.display = '';
+    plus.classList.add('plus');
+    box.append(plus);
+
+    plus.addEventListener('click', () => {
+      addImage(blob);
+    });
+  }
 
   trash.addEventListener('mousedown', async e => {
     async function remove() {
       let opfsRoot = await navigator.storage.getDirectory();
       let dalleDir = await opfsRoot.getDirectoryHandle(opfsDir);
-      await dalleDir.removeEntry(`${ts}--image.png`);
+      let fileExtension = isVideo ? 'video.mp4' : 'image.png';
+      await dalleDir.removeEntry(`${ts}--${fileExtension}`);
       await dalleDir.removeEntry(`${ts}--prompt.txt`);
       try {
         await dalleDir.removeEntry(`${ts}--settings.txt`);
@@ -94,10 +114,6 @@ function addHistoryItem(blob, prompt, ts, service) {
       removeActiveImage = remove;
       document.querySelector('.confirm-delete-modal').showModal();
     }
-  });
-
-  plus.addEventListener('click', () => {
-    addImage(blob);
   });
 
   document.querySelector('.gallery').append(box);
@@ -117,12 +133,24 @@ function modal(url, prompt, service) {
   p2.innerText = `(service: ${service})`;
   contents.append(p2);
 
-  let img = document.createElement('img');
-  img.src = url;
-  img.style.maxWidth = '512px';
-  img.style.maxHeight = '512px';
-  img.alt = prompt;
-  contents.append(img);
+  let element;
+  if (service === 'seedance') {
+    element = document.createElement('video');
+    element.src = url;
+    element.style.maxWidth = '512px';
+    element.style.maxHeight = '512px';
+    element.controls = true;
+    element.loop = true;
+    element.muted = true;
+    element.autoplay = true;
+  } else {
+    element = document.createElement('img');
+    element.src = url;
+    element.style.maxWidth = '512px';
+    element.style.maxHeight = '512px';
+    element.alt = prompt;
+  }
+  contents.append(element);
 
   modal.showModal();
 }
@@ -135,17 +163,17 @@ document.addEventListener('keydown', e => {
   if (!modal.open || activeImg == null) return;
 
   let gallery = document.querySelector('.gallery');
-  let imgs = [...gallery.querySelectorAll('img')];
+  let elements = [...gallery.querySelectorAll('img, video')];
 
-  let idx = imgs.indexOf(activeImg);
+  let idx = elements.indexOf(activeImg);
   if (idx === -1) return;
 
   if (e.code === 'ArrowLeft') {
     if (idx === 0) return;
-    imgs[idx - 1].click();
+    elements[idx - 1].click();
   } else {
-    if (idx === imgs.length - 1) return;
-    imgs[idx + 1].click();
+    if (idx === elements.length - 1) return;
+    elements[idx + 1].click();
   }
 });
 
@@ -173,6 +201,14 @@ async function submit() {
     return;
   }
 
+  if (service === 'seedance' && inputImages.length > 1) {
+    let errorModal = document.querySelector('.service-error-modal');
+    let errorMessage = document.querySelector('#service-error-message');
+    errorMessage.innerText = `Seedance only supports a single image as input.`;
+    errorModal.showModal();
+    return;
+  }
+
   working = true;
   inputEle.disabled = true;
 
@@ -180,6 +216,7 @@ async function submit() {
   output.style.display = 'none';
 
   output.querySelector('img')?.remove();
+  output.querySelector('video')?.remove();
   let bq = output.querySelector('blockquote');
   bq.innerText = '';
   bq.style.color = '';
@@ -194,9 +231,19 @@ async function submit() {
     body.set('ts', ts);
     body.set('service', service);
     body.set('user', user);
+
+    if (service === 'seedance') {
+      body.set('fps', document.getElementById('fps').value);
+      body.set('duration', document.getElementById('duration').value);
+      body.set('resolution', document.getElementById('resolution').value);
+      body.set('aspect_ratio', document.getElementById('aspect-ratio').value);
+      body.set('camera_fixed', document.getElementById('camera-fixed').checked);
+    }
+
     for (let image of inputImages) {
       body.append('images', image);
     }
+
     let res = await (
       await fetch('./image', {
         method: 'post',
@@ -212,20 +259,45 @@ async function submit() {
     let { b64 } = res;
 
     let data = base64ToUint8Array(b64);
-    let blob = new Blob([data], { type: 'image/png' });
-    let url = URL.createObjectURL(blob);
-    let img = document.createElement('img');
-    img.src = url;
-    img.style.maxWidth = '512px';
-    img.style.maxHeight = '512px';
+    let blob, url, element, filename;
 
-    output.prepend(img);
+    if (service === 'seedance') {
+      blob = new Blob([data], { type: 'video/mp4' });
+      url = URL.createObjectURL(blob);
+      element = document.createElement('video');
+      element.src = url;
+      element.style.maxWidth = '512px';
+      element.style.maxHeight = '512px';
+      element.controls = true;
+      element.loop = true;
+      element.muted = true;
+      element.autoplay = true;
+      filename = `${ts}--video.mp4`;
+    } else {
+      blob = new Blob([data], { type: 'image/png' });
+      url = URL.createObjectURL(blob);
+      element = document.createElement('img');
+      element.src = url;
+      element.style.maxWidth = '512px';
+      element.style.maxHeight = '512px';
+      filename = `${ts}--image.png`;
+    }
+
+    output.prepend(element);
 
     addHistoryItem(blob, prompt, ts, service);
 
-    await save([opfsDir], `${ts}--image.png`, data);
+    await save([opfsDir], filename, data);
     await save([opfsDir], `${ts}--prompt.txt`, new TextEncoder().encode(prompt));
-    await save([opfsDir], `${ts}--settings.txt`, new TextEncoder().encode(`service: ${service}\n`));
+    let settingsText = `service: ${service}\n`;
+    if (service === 'seedance') {
+      settingsText += `fps: ${document.getElementById('fps').value}\n`;
+      settingsText += `duration: ${document.getElementById('duration').value}\n`;
+      settingsText += `resolution: ${document.getElementById('resolution').value}\n`;
+      settingsText += `aspect_ratio: ${document.getElementById('aspect-ratio').value}\n`;
+      settingsText += `camera_fixed: ${document.getElementById('camera-fixed').checked}\n`;
+    }
+    await save([opfsDir], `${ts}--settings.txt`, new TextEncoder().encode(settingsText));
   } catch (e) {
     console.error(e);
     bq.innerText = 'ERROR: ' + e.message;
@@ -240,6 +312,17 @@ async function submit() {
 let inputImages = [];
 
 addEventListener('DOMContentLoaded', async () => {
+  // show/hide video parameters based on service selection
+  function toggleVideoParams() {
+    let service = document.querySelector('input[name="service"]:checked').value;
+    let videoParams = document.getElementById('video-params');
+    videoParams.style.display = service === 'seedance' ? 'block' : 'none';
+  }
+
+  document.querySelectorAll('input[name="service"]').forEach(radio => {
+    radio.addEventListener('change', toggleVideoParams);
+  });
+
   let savedService = localStorage.getItem('dalle-ui-service');
   if (savedService) {
     let serviceRadio = document.querySelector(`input[name="service"][value="${savedService}"]`);
@@ -247,6 +330,9 @@ addEventListener('DOMContentLoaded', async () => {
       serviceRadio.checked = true;
     }
   }
+
+  // Ensure video params are shown/hidden correctly after loading saved service
+  toggleVideoParams();
 
   // history dialog
 
@@ -358,22 +444,23 @@ addEventListener('DOMContentLoaded', async () => {
     obj[type] = handle;
   }
   for (let [ts, handles] of Object.entries(old).sort((a, b) => (a[0] > b[0] ? 1 : -1))) {
-    let { 'image.png': imageH, 'prompt.txt': promptH, 'settings.txt': settingsH } = handles;
-    if (imageH == null || promptH == null) {
+    let { 'image.png': imageH, 'video.mp4': videoH, 'prompt.txt': promptH, 'settings.txt': settingsH } = handles;
+    let mediaHandle = imageH || videoH;
+    if (mediaHandle == null || promptH == null) {
       // presumably an error saving, I guess? might as well clean up
       for (let name of Object.keys(handles)) {
         await dalleDir.removeEntry(`${ts}--${name}`);
       }
       continue;
     }
-    let image = await imageH.getFile();
+    let media = await mediaHandle.getFile();
     let prompt = await (await promptH.getFile()).text();
     let settings = settingsH ? await (await settingsH.getFile()).text() : `service: openai\n`;
     let serviceMatch = settings.match(/service: (?<service>\w+)/);
     let qualityMatch = settings.match(/quality: (?<quality>\w+)/);
     let service = serviceMatch ? serviceMatch.groups.service : (qualityMatch ? qualityMatch.groups.quality : 'openai');
 
-    addHistoryItem(image, prompt, ts, service);
+    addHistoryItem(media, prompt, ts, service);
   }
 });
 

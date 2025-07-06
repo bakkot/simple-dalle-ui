@@ -43,7 +43,7 @@ app.post('/check-user', (req, res) => {
 });
 
 app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), async (req, res) => {
-  let { prompt, ts, service, user } = req.body;
+  let { prompt, ts, service, user, fps, duration, resolution, aspect_ratio, camera_fixed } = req.body;
   if (!ALLOWED_USERS.includes(user)) {
     res.status(403);
     res.send('unknown user');
@@ -53,10 +53,14 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
 
   if (SAVE_OUTPUTS) {
     fs.writeFileSync(path.join(outdir, `${ts}--prompt.txt`), prompt, 'utf8');
-    fs.writeFileSync(path.join(outdir, `${ts}--settings.txt`), `user: ${user}\service: ${service}\n`, 'utf8');
+    let settingsText = `user: ${user}\service: ${service}\n`;
+    if (service === 'seedance') {
+      settingsText += `fps: ${fps}\nduration: ${duration}\nresolution: ${resolution}\naspect_ratio: ${aspect_ratio}\ncamera_fixed: ${camera_fixed}\n`;
+    }
+    fs.writeFileSync(path.join(outdir, `${ts}--settings.txt`), settingsText, 'utf8');
   }
 
-  let image_base64: string;
+  let output_base64: string;
   try {
     if (service === 'openai') {
       let res;
@@ -76,7 +80,7 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
           quality: 'high',
         });
       }
-      image_base64 = res.data![0].b64_json!;
+      output_base64 = res.data![0].b64_json!;
     } else if (service === 'kontext') {
       if (!Array.isArray(req.files) || req.files?.length !== 1) {
         throw new Error('kontext expects exactly one image as input');
@@ -89,7 +93,28 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
         },
       }) as FileOutput;
       let blob = await res.blob();
-      image_base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
+      output_base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
+    } else if (service === 'seedance') {
+      let input: any = {
+        fps: parseInt(fps) || 24,
+        prompt,
+        duration: parseInt(duration) || 5,
+        resolution: resolution || "1080p",
+        aspect_ratio: aspect_ratio || "16:9",
+        camera_fixed: camera_fixed === 'true'
+      };
+
+      if (Array.isArray(req.files) && req.files.length > 0) {
+        if (req.files.length !== 1) {
+          throw new Error('seedance expects exactly one image as input');
+        }
+        let f = req.files[0];
+        input.image = `data:${f.mimetype};base64,${f.buffer.toString('base64')}`;
+      }
+
+      let res = await replicate.run('bytedance/seedance-1-pro', { input }) as FileOutput;
+      let blob = await res.blob();
+      output_base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
     } else {
       throw new Error(`unknown service ${service}`);
     }
@@ -101,14 +126,14 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
   }
 
   console.log('done');
-  // console.log(result);
 
   if (SAVE_OUTPUTS) {
-    // Save the image to a file
-    fs.writeFileSync(path.join(outdir, `${ts}--image.png`), Buffer.from(image_base64, 'base64'));
+    // Save the output to a file
+    let filename = service === 'seedance' ? `${ts}--video.mp4` : `${ts}--image.png`;
+    fs.writeFileSync(path.join(outdir, filename), Buffer.from(output_base64, 'base64'));
   }
 
-  res.json({ b64: image_base64 });
+  res.json({ b64: output_base64 });
 });
 
 app.listen(PORT);

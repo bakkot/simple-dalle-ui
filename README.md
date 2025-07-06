@@ -17,5 +17,4 @@ node run.ts
 
 If you are using a version of node prior to 23.6.0, you will likely need to include `--experimental-strip-types` after the `node` command.
 
-You will need an OpenAI API key in `OPENAI_KEY.txt` and a Replicate API key in `REPLICATE_API_KEY`. If you don't care bout one or the other you can use an empty file and then just not submit requests to that one.
-
+You will need an OpenAI API key in `OPENAI_KEY.txt` and a Replicate API key in `REPLICATE_API_KEY`. If you don't care about one or the other you can use an empty file and then just not submit requests to that one.

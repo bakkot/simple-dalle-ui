@@ -61,7 +61,9 @@
   }
 
   .output > img,
-  .history-modal img {
+  .output > video,
+  .history-modal img,
+  .history-modal video {
     margin-left: auto;
     margin-right: auto;
     display: block;
@@ -327,6 +329,49 @@
 
         <input type="radio" id="kontext" name="service" value="kontext">
         <label for="kontext">kontext</label>
+
+        <input type="radio" id="seedance" name="service" value="seedance">
+        <label for="seedance">seedance (video)</label>
+      </div>
+
+      <div id="video-params" style="display: none; margin-top: 1em;">
+        <div>
+          <label for="fps">FPS:</label>
+          <select id="fps" name="fps">
+            <option value="24" selected>24</option>
+            <option value="30">30</option>
+            <option value="60">60</option>
+          </select>
+
+          <label for="duration" style="margin-left: 1em;">Duration:</label>
+          <select id="duration" name="duration">
+            <option value="3">3s</option>
+            <option value="5" selected>5s</option>
+            <option value="10">10s</option>
+          </select>
+        </div>
+
+        <div style="margin-top: 0.5em;">
+          <label for="resolution">Resolution:</label>
+          <select id="resolution" name="resolution">
+            <option value="480p">480p</option>
+            <option value="1080p" selected>1080p</option>
+          </select>
+
+          <label for="aspect-ratio" style="margin-left: 1em;">Aspect ratio:</label>
+          <select id="aspect-ratio" name="aspect-ratio">
+            <option value="16:9" selected>16:9</option>
+            <option value="9:16">9:16</option>
+            <option value="1:1">1:1</option>
+          </select>
+        </div>
+
+        <div style="margin-top: 0.5em;">
+          <label for="camera-fixed">
+            <input type="checkbox" id="camera-fixed" name="camera-fixed">
+            Fixed camera
+          </label>
+        </div>
       </div>
     </div>
 
