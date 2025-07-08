@@ -53,7 +53,7 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
 
   if (SAVE_OUTPUTS) {
     fs.writeFileSync(path.join(outdir, `${ts}--prompt.txt`), prompt, 'utf8');
-    let settingsText = `user: ${user}\service: ${service}\n`;
+    let settingsText = `user: ${user}\nservice: ${service}\n`;
     if (service === 'seedance') {
       settingsText += `fps: ${fps}\nduration: ${duration}\nresolution: ${resolution}\naspect_ratio: ${aspect_ratio}\ncamera_fixed: ${camera_fixed}\n`;
     }
