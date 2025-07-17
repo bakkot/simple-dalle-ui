@@ -240,6 +240,10 @@ async function submit() {
       body.set('camera_fixed', document.getElementById('camera-fixed').checked);
     }
 
+    if (service === 'openai' && inputImages.length > 0) {
+      body.set('input_fidelity', document.querySelector('input[name="input-fidelity"]:checked').value);
+    }
+
     for (let image of inputImages) {
       body.append('images', image);
     }
@@ -297,6 +301,9 @@ async function submit() {
       settingsText += `aspect_ratio: ${document.getElementById('aspect-ratio').value}\n`;
       settingsText += `camera_fixed: ${document.getElementById('camera-fixed').checked}\n`;
     }
+    if (service === 'openai' && inputImages.length > 0) {
+      settingsText += `input_fidelity: ${document.querySelector('input[name="input-fidelity"]:checked').value}\n`;
+    }
     await save([opfsDir], `${ts}--settings.txt`, new TextEncoder().encode(settingsText));
   } catch (e) {
     console.error(e);
@@ -312,15 +319,18 @@ async function submit() {
 let inputImages = [];
 
 addEventListener('DOMContentLoaded', async () => {
-  // show/hide video parameters based on service selection
-  function toggleVideoParams() {
+  // show/hide service-specific parameters based on service selection
+  function toggleServiceSpecificInputs() {
     let service = document.querySelector('input[name="service"]:checked').value;
     let videoParams = document.getElementById('video-params');
+    let openaiParams = document.getElementById('openai-params');
+    
     videoParams.style.display = service === 'seedance' ? 'block' : 'none';
+    openaiParams.style.display = service === 'openai' ? 'block' : 'none';
   }
 
   document.querySelectorAll('input[name="service"]').forEach(radio => {
-    radio.addEventListener('change', toggleVideoParams);
+    radio.addEventListener('change', toggleServiceSpecificInputs);
   });
 
   let savedService = localStorage.getItem('dalle-ui-service');
@@ -331,8 +341,8 @@ addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Ensure video params are shown/hidden correctly after loading saved service
-  toggleVideoParams();
+  // Ensure params are shown/hidden correctly after loading saved service
+  toggleServiceSpecificInputs();
 
   // history dialog
 

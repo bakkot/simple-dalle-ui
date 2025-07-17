@@ -43,7 +43,7 @@ app.post('/check-user', (req, res) => {
 });
 
 app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), async (req, res) => {
-  let { prompt, ts, service, user, fps, duration, resolution, aspect_ratio, camera_fixed } = req.body;
+  let { prompt, ts, service, user, fps, duration, resolution, aspect_ratio, camera_fixed, input_fidelity } = req.body;
   if (!ALLOWED_USERS.includes(user)) {
     res.status(403);
     res.send('unknown user');
@@ -57,6 +57,9 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
     if (service === 'seedance') {
       settingsText += `fps: ${fps}\nduration: ${duration}\nresolution: ${resolution}\naspect_ratio: ${aspect_ratio}\ncamera_fixed: ${camera_fixed}\n`;
     }
+    if (service === 'openai' && input_fidelity) {
+      settingsText += `input_fidelity: ${input_fidelity}\n`;
+    }
     fs.writeFileSync(path.join(outdir, `${ts}--settings.txt`), settingsText, 'utf8');
   }
 
@@ -65,12 +68,16 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
     if (service === 'openai') {
       let res;
       if (Array.isArray(req.files) && req.files.length > 0) {
-        res = await openai.images.edit({
+        let editParams: any = {
           model: 'gpt-image-1',
           prompt,
           image: await Promise.all(req.files.map(f => OpenAI.toFile(f.buffer, f.originalname, { type: f.mimetype }))),
           quality: 'high',
-        });
+        };
+        if (input_fidelity) {
+          editParams.input_fidelity = input_fidelity;
+        }
+        res = await openai.images.edit(editParams);
       } else {
         res = await openai.images.generate({
           model: 'gpt-image-1',
