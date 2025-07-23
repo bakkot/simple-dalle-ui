@@ -322,10 +322,10 @@ addEventListener('DOMContentLoaded', async () => {
   // show/hide service-specific parameters based on service selection
   function toggleServiceSpecificInputs() {
     let service = document.querySelector('input[name="service"]:checked').value;
-    let videoParams = document.getElementById('video-params');
+    let seedanceParams = document.getElementById('seedance-params');
     let openaiParams = document.getElementById('openai-params');
-    
-    videoParams.style.display = service === 'seedance' ? 'block' : 'none';
+
+    seedanceParams.style.display = service === 'seedance' ? 'block' : 'none';
     openaiParams.style.display = service === 'openai' ? 'block' : 'none';
   }
 
