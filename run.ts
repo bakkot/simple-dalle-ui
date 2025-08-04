@@ -43,7 +43,7 @@ app.post('/check-user', (req, res) => {
 });
 
 app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), async (req, res) => {
-  let { prompt, ts, service, user, fps, duration, resolution, aspect_ratio, camera_fixed, input_fidelity } = req.body;
+  let { prompt, ts, service, user, fps, duration, resolution, aspect_ratio, camera_fixed, input_fidelity, enhance_prompt, guidance } = req.body;
   if (!ALLOWED_USERS.includes(user)) {
     res.status(403);
     res.send('unknown user');
@@ -59,6 +59,10 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
     }
     if (service === 'openai' && input_fidelity) {
       settingsText += `input_fidelity: ${input_fidelity}\n`;
+    }
+    if (service === 'qwen') {
+      settingsText += `aspect_ratio: ${aspect_ratio}\n`;
+      settingsText += `guidance: ${guidance}\n`;
     }
     fs.writeFileSync(path.join(outdir, `${ts}--settings.txt`), settingsText, 'utf8');
   }
@@ -122,6 +126,20 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
 
       let res = await replicate.run('bytedance/seedance-1-pro', { input }) as FileOutput;
       let blob = await res.blob();
+      output_base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
+    } else if (service === 'qwen') {
+      let input = {
+        prompt,
+        enhance_prompt: enhance_prompt === 'true',
+        aspect_ratio: aspect_ratio || '16:9',
+        go_fast: true,
+        num_inference_steps: 50,
+        guidance: parseFloat(guidance) || 4,
+        disable_safety_checker: true,
+      };
+
+      let res = await replicate.run('qwen/qwen-image', { input }) as FileOutput[];
+      let blob = await res[0].blob();
       output_base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
     } else {
       throw new Error(`unknown service ${service}`);

@@ -209,6 +209,14 @@ async function submit() {
     return;
   }
 
+  if (service === 'qwen' && inputImages.length > 0) {
+    let errorModal = document.querySelector('.service-error-modal');
+    let errorMessage = document.querySelector('#service-error-message');
+    errorMessage.innerText = 'Qwen does not accept image inputs.';
+    errorModal.showModal();
+    return;
+  }
+
   working = true;
   inputEle.disabled = true;
 
@@ -242,6 +250,11 @@ async function submit() {
 
     if (service === 'openai' && inputImages.length > 0) {
       body.set('input_fidelity', document.querySelector('input[name="input-fidelity"]:checked').value);
+    }
+
+    if (service === 'qwen') {
+      body.set('aspect_ratio', document.getElementById('qwen-aspect-ratio').value);
+      body.set('guidance', document.getElementById('guidance').value);
     }
 
     for (let image of inputImages) {
@@ -304,6 +317,10 @@ async function submit() {
     if (service === 'openai' && inputImages.length > 0) {
       settingsText += `input_fidelity: ${document.querySelector('input[name="input-fidelity"]:checked').value}\n`;
     }
+    if (service === 'qwen') {
+      settingsText += `aspect_ratio: ${document.getElementById('qwen-aspect-ratio').value}\n`;
+      settingsText += `guidance: ${document.getElementById('guidance').value}\n`;
+    }
     await save([opfsDir], `${ts}--settings.txt`, new TextEncoder().encode(settingsText));
   } catch (e) {
     console.error(e);
@@ -324,9 +341,11 @@ addEventListener('DOMContentLoaded', async () => {
     let service = document.querySelector('input[name="service"]:checked').value;
     let seedanceParams = document.getElementById('seedance-params');
     let openaiParams = document.getElementById('openai-params');
+    let qwenParams = document.getElementById('qwen-params');
 
     seedanceParams.style.display = service === 'seedance' ? 'block' : 'none';
     openaiParams.style.display = service === 'openai' ? 'block' : 'none';
+    qwenParams.style.display = service === 'qwen' ? 'block' : 'none';
   }
 
   document.querySelectorAll('input[name="service"]').forEach(radio => {
