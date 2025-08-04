@@ -254,7 +254,9 @@ async function submit() {
 
     if (service === 'qwen') {
       body.set('aspect_ratio', document.getElementById('qwen-aspect-ratio').value);
-      body.set('guidance', document.getElementById('guidance').value);
+      let realismLevel = document.getElementById('realism').value;
+      let guidanceValue = realismLevel === 'max' ? '2' : realismLevel === 'medium' ? '3' : '4';
+      body.set('guidance', guidanceValue);
     }
 
     for (let image of inputImages) {
@@ -319,7 +321,7 @@ async function submit() {
     }
     if (service === 'qwen') {
       settingsText += `aspect_ratio: ${document.getElementById('qwen-aspect-ratio').value}\n`;
-      settingsText += `guidance: ${document.getElementById('guidance').value}\n`;
+      settingsText += `realism: ${document.getElementById('realism').value}\n`;
     }
     await save([opfsDir], `${ts}--settings.txt`, new TextEncoder().encode(settingsText));
   } catch (e) {
