@@ -56,15 +56,23 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
     let settingsText = `user: ${user}\nservice: ${service}\n`;
     if (service === 'seedance') {
       settingsText += `fps: ${fps}\nduration: ${duration}\nresolution: ${resolution}\naspect_ratio: ${aspect_ratio}\ncamera_fixed: ${camera_fixed}\n`;
-    }
-    if (service === 'openai' && input_fidelity) {
+    } else if (service === 'openai' && input_fidelity) {
       settingsText += `input_fidelity: ${input_fidelity}\n`;
-    }
-    if (service === 'qwen') {
+    } else if (service === 'qwen') {
       settingsText += `aspect_ratio: ${aspect_ratio}\n`;
       settingsText += `guidance: ${guidance}\n`;
     }
     fs.writeFileSync(path.join(outdir, `${ts}--settings.txt`), settingsText, 'utf8');
+    if (Array.isArray(req.files)) {
+      for (let i = 0; i < req.files.length; ++i) {
+        let file = req.files[i];
+        let ext = contentTypeToExt[file.mimetype];
+        if (ext == null) {
+          ext = '.unknown';
+        }
+        fs.writeFileSync(path.join(outdir, `${ts}--input-image-${i}${ext}`), file.buffer);
+      }
+    }
   }
 
   let output_base64: string;
@@ -102,6 +110,7 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
         input: {
           prompt,
           input_image: `data:${f.mimetype};base64,${f.buffer.toString('base64')}`,
+          safety_tolerance: 6,
         },
       }) as FileOutput;
       let blob = await res.blob();
@@ -113,7 +122,7 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
         duration: parseInt(duration) || 5,
         resolution: resolution || "1080p",
         aspect_ratio: aspect_ratio || "16:9",
-        camera_fixed: camera_fixed === 'true'
+        camera_fixed: camera_fixed === 'true',
       };
 
       if (Array.isArray(req.files) && req.files.length > 0) {
@@ -161,6 +170,19 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
 
   res.json({ b64: output_base64 });
 });
+
+const contentTypeToExt: Record<string, string> = {
+  // @ts-expect-error
+  __proto__: null,
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+  'image/svg+xml': '.svg',
+  'image/bmp': '.bmp',
+  'image/tiff': '.tiff',
+  'image/ico': '.ico'
+};
 
 app.listen(PORT);
 console.log(`Listening at http://localhost:${PORT}`);
