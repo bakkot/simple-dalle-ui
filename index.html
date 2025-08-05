@@ -340,10 +340,10 @@
       <div id="openai-params" style="display: none; margin-top: 1em;">
         <div>
           input fidelity (set to "high" if it's messing up faces etc):
-          <input type="radio" id="input-fidelity-low" name="input-fidelity" value="low" checked>
-          <label for="input-fidelity-low">low</label>
-          <input type="radio" id="input-fidelity-high" name="input-fidelity" value="high">
-          <label for="input-fidelity-high">high</label>
+          <input type="radio" id="openai-input-fidelity-low" name="openai-input-fidelity" value="low" checked>
+          <label for="openai-input-fidelity-low">low</label>
+          <input type="radio" id="openai-input-fidelity-high" name="openai-input-fidelity" value="high">
+          <label for="openai-input-fidelity-high">high</label>
         </div>
       </div>
 
@@ -353,29 +353,29 @@
         </div>
 
         <div>
-          <label for="fps">fps:</label>
-          <select id="fps" name="fps">
+          <label for="seedance-fps">fps:</label>
+          <select id="seedance-fps" name="seedance-fps">
             <option value="24" selected>24</option>
             <option value="30">30</option>
             <option value="60">60</option>
           </select>
 
-          <label for="duration" style="margin-left: 1em;">duration:</label>
-          <select id="duration" name="duration">
+          <label for="seedance-duration" style="margin-left: 1em;">duration:</label>
+          <select id="seedance-duration" name="seedance-duration">
             <option value="5" selected>5s</option>
             <option value="10">10s</option>
           </select>
         </div>
 
         <div style="margin-top: 0.5em;">
-          <label for="resolution">resolution:</label>
-          <select id="resolution" name="resolution">
+          <label for="seedance-resolution">resolution:</label>
+          <select id="seedance-resolution" name="seedance-resolution">
             <option value="480p" selected>480p</option>
             <option value="1080p">1080p</option>
           </select>
 
-          <label for="aspect-ratio" style="margin-left: 1em;">aspect ratio:</label>
-          <select id="aspect-ratio" name="aspect-ratio">
+          <label for="seedance-aspect-ratio" style="margin-left: 1em;">aspect ratio:</label>
+          <select id="seedance-aspect-ratio" name="seedance-aspect-ratio">
             <option value="16:9" selected>16:9</option>
             <option value="9:16">9:16</option>
             <option value="1:1">1:1</option>
@@ -383,8 +383,8 @@
         </div>
 
         <div style="margin-top: 0.5em;">
-          <label for="camera-fixed">
-            <input type="checkbox" id="camera-fixed" name="camera-fixed">
+          <label for="seedance-camera-fixed">
+            <input type="checkbox" id="seedance-camera-fixed" name="seedance-camera-fixed">
             fixed camera
           </label>
         </div>
@@ -392,8 +392,8 @@
 
       <div id="kontext-params" style="display: none; margin-top: 1em;">
         <div>
-          <label for="prompt-upsampling">
-            <input type="checkbox" id="prompt-upsampling" name="prompt-upsampling">
+          <label for="kontext-prompt-upsampling">
+            <input type="checkbox" id="kontext-prompt-upsampling" name="kontext-prompt-upsampling">
             LLM prompt assist
           </label>
         </div>
@@ -410,8 +410,8 @@
             <option value="3:4">3:4</option>
           </select>
 
-          <label for="realism" style="margin-left: 1em;">realism:</label>
-          <select id="realism" name="realism">
+          <label for="qwen-realism" style="margin-left: 1em;">realism:</label>
+          <select id="qwen-realism" name="qwen-realism">
             <option value="max">max</option>
             <option value="medium">medium</option>
             <option value="min" selected>min</option>

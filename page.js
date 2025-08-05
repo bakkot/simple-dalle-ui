@@ -241,24 +241,24 @@ async function submit() {
     body.set('user', user);
 
     if (service === 'seedance') {
-      body.set('fps', document.getElementById('fps').value);
-      body.set('duration', document.getElementById('duration').value);
-      body.set('resolution', document.getElementById('resolution').value);
-      body.set('aspect_ratio', document.getElementById('aspect-ratio').value);
-      body.set('camera_fixed', document.getElementById('camera-fixed').checked);
+      body.set('fps', document.getElementById('seedance-fps').value);
+      body.set('duration', document.getElementById('seedance-duration').value);
+      body.set('resolution', document.getElementById('seedance-resolution').value);
+      body.set('aspect_ratio', document.getElementById('seedance-aspect-ratio').value);
+      body.set('camera_fixed', document.getElementById('seedance-camera-fixed').checked);
     }
 
     if (service === 'openai' && inputImages.length > 0) {
-      body.set('input_fidelity', document.querySelector('input[name="input-fidelity"]:checked').value);
+      body.set('input_fidelity', document.querySelector('input[name="openai-input-fidelity"]:checked').value);
     }
 
     if (service === 'kontext') {
-      body.set('prompt_upsampling', document.getElementById('prompt-upsampling').checked);
+      body.set('prompt_upsampling', document.getElementById('kontext-prompt-upsampling').checked);
     }
 
     if (service === 'qwen') {
       body.set('aspect_ratio', document.getElementById('qwen-aspect-ratio').value);
-      let realismLevel = document.getElementById('realism').value;
+      let realismLevel = document.getElementById('qwen-realism').value;
       let guidanceValue = realismLevel === 'max' ? '2' : realismLevel === 'medium' ? '3' : '4';
       body.set('guidance', guidanceValue);
     }
@@ -314,21 +314,21 @@ async function submit() {
     await save([opfsDir], `${ts}--prompt.txt`, new TextEncoder().encode(prompt));
     let settingsText = `service: ${service}\n`;
     if (service === 'seedance') {
-      settingsText += `fps: ${document.getElementById('fps').value}\n`;
-      settingsText += `duration: ${document.getElementById('duration').value}\n`;
-      settingsText += `resolution: ${document.getElementById('resolution').value}\n`;
-      settingsText += `aspect_ratio: ${document.getElementById('aspect-ratio').value}\n`;
-      settingsText += `camera_fixed: ${document.getElementById('camera-fixed').checked}\n`;
+      settingsText += `fps: ${document.getElementById('seedance-fps').value}\n`;
+      settingsText += `duration: ${document.getElementById('seedance-duration').value}\n`;
+      settingsText += `resolution: ${document.getElementById('seedance-resolution').value}\n`;
+      settingsText += `aspect_ratio: ${document.getElementById('seedance-aspect-ratio').value}\n`;
+      settingsText += `camera_fixed: ${document.getElementById('seedance-camera-fixed').checked}\n`;
     }
     if (service === 'openai' && inputImages.length > 0) {
-      settingsText += `input_fidelity: ${document.querySelector('input[name="input-fidelity"]:checked').value}\n`;
+      settingsText += `input_fidelity: ${document.querySelector('input[name="openai-input-fidelity"]:checked').value}\n`;
     }
     if (service === 'kontext') {
-      settingsText += `prompt_upsampling: ${document.getElementById('prompt-upsampling').checked}\n`;
+      settingsText += `prompt_upsampling: ${document.getElementById('kontext-prompt-upsampling').checked}\n`;
     }
     if (service === 'qwen') {
       settingsText += `aspect_ratio: ${document.getElementById('qwen-aspect-ratio').value}\n`;
-      settingsText += `realism: ${document.getElementById('realism').value}\n`;
+      settingsText += `realism: ${document.getElementById('qwen-realism').value}\n`;
     }
     await save([opfsDir], `${ts}--settings.txt`, new TextEncoder().encode(settingsText));
   } catch (e) {
