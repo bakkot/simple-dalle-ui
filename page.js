@@ -252,6 +252,10 @@ async function submit() {
       body.set('input_fidelity', document.querySelector('input[name="input-fidelity"]:checked').value);
     }
 
+    if (service === 'kontext') {
+      body.set('prompt_upsampling', document.getElementById('prompt-upsampling').checked);
+    }
+
     if (service === 'qwen') {
       body.set('aspect_ratio', document.getElementById('qwen-aspect-ratio').value);
       let realismLevel = document.getElementById('realism').value;
@@ -319,6 +323,9 @@ async function submit() {
     if (service === 'openai' && inputImages.length > 0) {
       settingsText += `input_fidelity: ${document.querySelector('input[name="input-fidelity"]:checked').value}\n`;
     }
+    if (service === 'kontext') {
+      settingsText += `prompt_upsampling: ${document.getElementById('prompt-upsampling').checked}\n`;
+    }
     if (service === 'qwen') {
       settingsText += `aspect_ratio: ${document.getElementById('qwen-aspect-ratio').value}\n`;
       settingsText += `realism: ${document.getElementById('realism').value}\n`;
@@ -343,10 +350,12 @@ addEventListener('DOMContentLoaded', async () => {
     let service = document.querySelector('input[name="service"]:checked').value;
     let seedanceParams = document.getElementById('seedance-params');
     let openaiParams = document.getElementById('openai-params');
+    let kontextParams = document.getElementById('kontext-params');
     let qwenParams = document.getElementById('qwen-params');
 
     seedanceParams.style.display = service === 'seedance' ? 'block' : 'none';
     openaiParams.style.display = service === 'openai' ? 'block' : 'none';
+    kontextParams.style.display = service === 'kontext' ? 'block' : 'none';
     qwenParams.style.display = service === 'qwen' ? 'block' : 'none';
   }
 

@@ -43,7 +43,7 @@ app.post('/check-user', (req, res) => {
 });
 
 app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), async (req, res) => {
-  let { prompt, ts, service, user, fps, duration, resolution, aspect_ratio, camera_fixed, input_fidelity, enhance_prompt, guidance } = req.body;
+  let { prompt, ts, service, user, fps, duration, resolution, aspect_ratio, camera_fixed, input_fidelity, enhance_prompt, guidance, prompt_upsampling } = req.body;
   if (!ALLOWED_USERS.includes(user)) {
     res.status(403);
     res.send('unknown user');
@@ -58,6 +58,8 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
       settingsText += `fps: ${fps}\nduration: ${duration}\nresolution: ${resolution}\naspect_ratio: ${aspect_ratio}\ncamera_fixed: ${camera_fixed}\n`;
     } else if (service === 'openai' && input_fidelity) {
       settingsText += `input_fidelity: ${input_fidelity}\n`;
+    } else if (service === 'kontext') {
+      settingsText += `prompt_upsampling: ${prompt_upsampling}\n`;
     } else if (service === 'qwen') {
       settingsText += `aspect_ratio: ${aspect_ratio}\n`;
       settingsText += `guidance: ${guidance}\n`;
@@ -111,6 +113,7 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
           prompt,
           input_image: `data:${f.mimetype};base64,${f.buffer.toString('base64')}`,
           safety_tolerance: 6,
+          prompt_upsampling: prompt_upsampling === 'true',
         },
       }) as FileOutput;
       let blob = await res.blob();

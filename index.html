@@ -353,14 +353,14 @@
         </div>
 
         <div>
-          <label for="fps">FPS:</label>
+          <label for="fps">fps:</label>
           <select id="fps" name="fps">
             <option value="24" selected>24</option>
             <option value="30">30</option>
             <option value="60">60</option>
           </select>
 
-          <label for="duration" style="margin-left: 1em;">Duration:</label>
+          <label for="duration" style="margin-left: 1em;">duration:</label>
           <select id="duration" name="duration">
             <option value="5" selected>5s</option>
             <option value="10">10s</option>
@@ -368,13 +368,13 @@
         </div>
 
         <div style="margin-top: 0.5em;">
-          <label for="resolution">Resolution:</label>
+          <label for="resolution">resolution:</label>
           <select id="resolution" name="resolution">
             <option value="480p" selected>480p</option>
             <option value="1080p">1080p</option>
           </select>
 
-          <label for="aspect-ratio" style="margin-left: 1em;">Aspect ratio:</label>
+          <label for="aspect-ratio" style="margin-left: 1em;">aspect ratio:</label>
           <select id="aspect-ratio" name="aspect-ratio">
             <option value="16:9" selected>16:9</option>
             <option value="9:16">9:16</option>
@@ -385,14 +385,23 @@
         <div style="margin-top: 0.5em;">
           <label for="camera-fixed">
             <input type="checkbox" id="camera-fixed" name="camera-fixed">
-            Fixed camera
+            fixed camera
+          </label>
+        </div>
+      </div>
+
+      <div id="kontext-params" style="display: none; margin-top: 1em;">
+        <div>
+          <label for="prompt-upsampling">
+            <input type="checkbox" id="prompt-upsampling" name="prompt-upsampling">
+            LLM prompt assist
           </label>
         </div>
       </div>
 
       <div id="qwen-params" style="display: none; margin-top: 1em;">
         <div style="margin-bottom: 0.5em;">
-          <label for="qwen-aspect-ratio">Aspect ratio:</label>
+          <label for="qwen-aspect-ratio">aspect ratio:</label>
           <select id="qwen-aspect-ratio" name="qwen-aspect-ratio">
             <option value="16:9" selected>16:9</option>
             <option value="1:1">1:1</option>
@@ -401,7 +410,7 @@
             <option value="3:4">3:4</option>
           </select>
 
-          <label for="realism" style="margin-left: 1em;">Realism:</label>
+          <label for="realism" style="margin-left: 1em;">realism:</label>
           <select id="realism" name="realism">
             <option value="max">max</option>
             <option value="medium">medium</option>
