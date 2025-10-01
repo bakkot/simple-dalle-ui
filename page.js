@@ -189,17 +189,17 @@ async function submit() {
 
   localStorage.setItem('dalle-ui-service', service);
 
-  if (service === 'kontext' && inputImages.length !== 1) {
-    let errorModal = document.querySelector('.service-error-modal');
-    let errorMessage = document.querySelector('#service-error-message');
-    if (inputImages.length === 0) {
-      errorMessage.innerText = 'Kontext only does image editing; you need to attach an image.';
-    } else {
-      errorMessage.innerText = `Kontext only supports a single image as input.`;
-    }
-    errorModal.showModal();
-    return;
-  }
+  // if (service === 'kontext' && inputImages.length !== 1) {
+  //   let errorModal = document.querySelector('.service-error-modal');
+  //   let errorMessage = document.querySelector('#service-error-message');
+  //   if (inputImages.length === 0) {
+  //     errorMessage.innerText = 'Kontext only does image editing; you need to attach an image.';
+  //   } else {
+  //     errorMessage.innerText = `Kontext only supports a single image as input.`;
+  //   }
+  //   errorModal.showModal();
+  //   return;
+  // }
 
   if (service === 'seedance' && inputImages.length > 1) {
     let errorModal = document.querySelector('.service-error-modal');
@@ -209,13 +209,13 @@ async function submit() {
     return;
   }
 
-  if (service === 'qwen' && inputImages.length > 0) {
-    let errorModal = document.querySelector('.service-error-modal');
-    let errorMessage = document.querySelector('#service-error-message');
-    errorMessage.innerText = 'Qwen does not accept image inputs.';
-    errorModal.showModal();
-    return;
-  }
+  // if (service === 'qwen' && inputImages.length > 0) {
+  //   let errorModal = document.querySelector('.service-error-modal');
+  //   let errorMessage = document.querySelector('#service-error-message');
+  //   errorMessage.innerText = 'Qwen does not accept image inputs.';
+  //   errorModal.showModal();
+  //   return;
+  // }
 
   working = true;
   inputEle.disabled = true;
@@ -252,9 +252,9 @@ async function submit() {
       body.set('input_fidelity', document.querySelector('input[name="openai-input-fidelity"]:checked').value);
     }
 
-    if (service === 'kontext') {
-      body.set('prompt_upsampling', document.getElementById('kontext-prompt-upsampling').checked);
-    }
+    // if (service === 'kontext') {
+    //   body.set('prompt_upsampling', document.getElementById('kontext-prompt-upsampling').checked);
+    // }
 
     if (service === 'qwen') {
       body.set('aspect_ratio', document.getElementById('qwen-aspect-ratio').value);
@@ -323,9 +323,9 @@ async function submit() {
     if (service === 'openai' && inputImages.length > 0) {
       settingsText += `input_fidelity: ${document.querySelector('input[name="openai-input-fidelity"]:checked').value}\n`;
     }
-    if (service === 'kontext') {
-      settingsText += `prompt_upsampling: ${document.getElementById('kontext-prompt-upsampling').checked}\n`;
-    }
+    // if (service === 'kontext') {
+    //   settingsText += `prompt_upsampling: ${document.getElementById('kontext-prompt-upsampling').checked}\n`;
+    // }
     if (service === 'qwen') {
       settingsText += `aspect_ratio: ${document.getElementById('qwen-aspect-ratio').value}\n`;
       settingsText += `realism: ${document.getElementById('qwen-realism').value}\n`;
@@ -350,12 +350,12 @@ addEventListener('DOMContentLoaded', async () => {
     let service = document.querySelector('input[name="service"]:checked').value;
     let seedanceParams = document.getElementById('seedance-params');
     let openaiParams = document.getElementById('openai-params');
-    let kontextParams = document.getElementById('kontext-params');
+    // let kontextParams = document.getElementById('kontext-params');
     let qwenParams = document.getElementById('qwen-params');
 
     seedanceParams.style.display = service === 'seedance' ? 'block' : 'none';
     openaiParams.style.display = service === 'openai' ? 'block' : 'none';
-    kontextParams.style.display = service === 'kontext' ? 'block' : 'none';
+    // kontextParams.style.display = service === 'kontext' ? 'block' : 'none';
     qwenParams.style.display = service === 'qwen' ? 'block' : 'none';
   }
 

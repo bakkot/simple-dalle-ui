@@ -3,22 +3,31 @@ import * as path from 'node:path';
 import express from 'express';
 import multer from 'multer';
 import OpenAI from 'openai';
-import Replicate, { type FileOutput } from 'replicate';
+import { fal } from "@fal-ai/client";
 
 let PORT = 31482; // 'oai' in base 36
 
 let SAVE_OUTPUTS = true; // save outputs locally
 
 let OPENAI_API_KEY = fs.readFileSync(path.join(import.meta.dirname, 'OPENAI_KEY.txt'), 'utf8').trim();
-let REPLICATE_API_KEY = fs.readFileSync(path.join(import.meta.dirname, 'REPLICATE_KEY.txt'), 'utf8').trim();
+let FAL_API_KEY = fs.readFileSync(path.join(import.meta.dirname, 'FAL_KEY.txt'), 'utf8').trim();
 let openai = new OpenAI({ apiKey: OPENAI_API_KEY });
-let replicate = new Replicate({ auth: REPLICATE_API_KEY });
+fal.config({
+  credentials: FAL_API_KEY,
+});
 
 let ALLOWED_USERS = fs.readFileSync(path.join(import.meta.dirname, 'ALLOWED_USERS.txt'), 'utf8').split('\n').map(x => x.trim()).filter(x => x.length > 0);
 
 let outdir = path.join(import.meta.dirname, 'outputs');
 if (SAVE_OUTPUTS) {
   fs.mkdirSync(outdir, { recursive: true });
+}
+
+async function fetchToBase64(url: string) {
+  const response = await fetch(url);
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  return buffer.toString('base64');
 }
 
 let app = express();
@@ -103,21 +112,21 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
         });
       }
       output_base64 = res.data![0].b64_json!;
-    } else if (service === 'kontext') {
-      if (!Array.isArray(req.files) || req.files?.length !== 1) {
-        throw new Error('kontext expects exactly one image as input');
-      }
-      let f = req.files[0];
-      let res = await replicate.run('black-forest-labs/flux-kontext-pro', {
-        input: {
-          prompt,
-          input_image: `data:${f.mimetype};base64,${f.buffer.toString('base64')}`,
-          safety_tolerance: 6,
-          prompt_upsampling: prompt_upsampling === 'true',
-        },
-      }) as FileOutput;
-      let blob = await res.blob();
-      output_base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
+    // } else if (service === 'kontext') {
+    //   if (!Array.isArray(req.files) || req.files?.length !== 1) {
+    //     throw new Error('kontext expects exactly one image as input');
+    //   }
+    //   let f = req.files[0];
+    //   let res = await replicate.run('black-forest-labs/flux-kontext-pro', {
+    //     input: {
+    //       prompt,
+    //       input_image: `data:${f.mimetype};base64,${f.buffer.toString('base64')}`,
+    //       safety_tolerance: 6,
+    //       prompt_upsampling: prompt_upsampling === 'true',
+    //     },
+    //   }) as FileOutput;
+    //   let blob = await res.blob();
+    //   output_base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
     } else if (service === 'seedance') {
       let input: any = {
         fps: parseInt(fps) || 24,
@@ -126,33 +135,47 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
         resolution: resolution || "1080p",
         aspect_ratio: aspect_ratio || "16:9",
         camera_fixed: camera_fixed === 'true',
+        enable_safety_checker: false,
       };
 
+      let model = 'fal-ai/bytedance/seedance/v1/pro/text-to-video';
       if (Array.isArray(req.files) && req.files.length > 0) {
         if (req.files.length !== 1) {
-          throw new Error('seedance expects exactly one image as input');
+          throw new Error('seedance expects zero or one image as input');
         }
+        model = 'fal-ai/bytedance/seedance/v1/pro/image-to-video';
         let f = req.files[0];
-        input.image = `data:${f.mimetype};base64,${f.buffer.toString('base64')}`;
+        input.image_url = new File([f.buffer], f.filename);
       }
 
-      let res = await replicate.run('bytedance/seedance-1-pro', { input }) as FileOutput;
-      let blob = await res.blob();
-      output_base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
+      let res = await fal.subscribe(model, { input });
+      let { url } = res.data.video;
+      output_base64 = await fetchToBase64(url);
     } else if (service === 'qwen') {
-      let input = {
+      let input: any = {
         prompt,
         enhance_prompt: enhance_prompt === 'true',
         aspect_ratio: aspect_ratio || '16:9',
         go_fast: true,
         num_inference_steps: 50,
         guidance: parseFloat(guidance) || 4,
-        disable_safety_checker: true,
+        enable_safety_checker: false,
       };
+      let model = 'fal-ai/qwen-image';
+      if (Array.isArray(req.files) && req.files.length > 0) {
+        if (req.files.length === 1) {
+          model = 'fal-ai/qwen-image-edit/image-to-image';
+          let f = req.files[0];
+          input.image_url = new File([f.buffer], f.filename);
+        } else {
+          model = 'fal-ai/qwen-image-edit-plus';
+          input.image_urls = req.files.map(f => new File([f.buffer], f.filename));
+        }
+      }
 
-      let res = await replicate.run('qwen/qwen-image', { input }) as FileOutput[];
-      let blob = await res[0].blob();
-      output_base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
+      let res = await fal.subscribe(model, { input });
+      let { url } = res.data.images[0];
+      output_base64 = await fetchToBase64(url);
     } else {
       throw new Error(`unknown service ${service}`);
     }
