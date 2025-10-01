@@ -58,17 +58,17 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
     res.send('unknown user');
     return;
   }
-  console.log('working...');
+  console.log(`working (${service})...`);
 
   if (SAVE_OUTPUTS) {
     fs.writeFileSync(path.join(outdir, `${ts}--prompt.txt`), prompt, 'utf8');
     let settingsText = `user: ${user}\nservice: ${service}\n`;
-    if (service === 'seedance') {
-      settingsText += `fps: ${fps}\nduration: ${duration}\nresolution: ${resolution}\naspect_ratio: ${aspect_ratio}\ncamera_fixed: ${camera_fixed}\n`;
-    } else if (service === 'openai' && input_fidelity) {
+    if (service === 'openai' && input_fidelity) {
       settingsText += `input_fidelity: ${input_fidelity}\n`;
-    } else if (service === 'kontext') {
-      settingsText += `prompt_upsampling: ${prompt_upsampling}\n`;
+    } else if (service === 'seedance') {
+      settingsText += `fps: ${fps}\nduration: ${duration}\nresolution: ${resolution}\naspect_ratio: ${aspect_ratio}\ncamera_fixed: ${camera_fixed}\n`;
+    } else if (service === 'wan') {
+      settingsText += `resolution: ${resolution}\naspect_ratio: ${aspect_ratio}\n`;
     } else if (service === 'qwen') {
       settingsText += `aspect_ratio: ${aspect_ratio}\n`;
       settingsText += `guidance: ${guidance}\n`;
@@ -132,8 +132,8 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
         fps: parseInt(fps) || 24,
         prompt,
         duration: parseInt(duration) || 5,
-        resolution: resolution || "1080p",
-        aspect_ratio: aspect_ratio || "16:9",
+        resolution: resolution || '480p',
+        aspect_ratio: aspect_ratio || '16:9',
         camera_fixed: camera_fixed === 'true',
         enable_safety_checker: false,
       };
@@ -146,6 +146,30 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
         model = 'fal-ai/bytedance/seedance/v1/pro/image-to-video';
         let f = req.files[0];
         input.image_url = new File([f.buffer], f.filename);
+      }
+
+      let res = await fal.subscribe(model, { input });
+      let { url } = res.data.video;
+      output_base64 = await fetchToBase64(url);
+    } else if (service === 'wan') {
+      let input: any = {
+        prompt,
+        resolution: resolution || '480p',
+        aspect_ratio: aspect_ratio || '16:9',
+        enable_safety_checker: false,
+      };
+
+      let model = 'fal-ai/wan/v2.2-a14b/text-to-video';
+      if (Array.isArray(req.files) && req.files.length > 0) {
+        if (req.files.length !== 1) {
+          throw new Error('wan expects zero or one image as input');
+        }
+        model = 'fal-ai/wan/v2.2-a14b/image-to-video';
+        let f = req.files[0];
+        input.image_url = new File([f.buffer], f.filename);
+      } else if (input.aspect_ratio === 'auto') {
+        // auto aspect ratio is only supported for i2v
+        input.aspect_ratio = '16:9';
       }
 
       let res = await fal.subscribe(model, { input });

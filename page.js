@@ -43,6 +43,8 @@ let removeActiveImage = () => {
   console.error('unreachable');
 };
 
+let videos = ['seedance', 'wan'];
+
 let activeImg = null;
 function addHistoryItem(blob, prompt, ts, service) {
   let url = URL.createObjectURL(blob);
@@ -50,7 +52,8 @@ function addHistoryItem(blob, prompt, ts, service) {
   box.classList.add('gallery-box');
   box.style.position = 'relative';
 
-  let element, isVideo = service === 'seedance';
+  let element;
+  let isVideo = videos.includes(service);
 
   if (isVideo) {
     element = document.createElement('video');
@@ -134,7 +137,7 @@ function modal(url, prompt, service) {
   contents.append(p2);
 
   let element;
-  if (service === 'seedance') {
+  if (videos.includes(service)) {
     element = document.createElement('video');
     element.src = url;
     element.style.maxWidth = '512px';
@@ -209,13 +212,13 @@ async function submit() {
     return;
   }
 
-  // if (service === 'qwen' && inputImages.length > 0) {
-  //   let errorModal = document.querySelector('.service-error-modal');
-  //   let errorMessage = document.querySelector('#service-error-message');
-  //   errorMessage.innerText = 'Qwen does not accept image inputs.';
-  //   errorModal.showModal();
-  //   return;
-  // }
+  if (service === 'wan' && inputImages.length > 1) {
+    let errorModal = document.querySelector('.service-error-modal');
+    let errorMessage = document.querySelector('#service-error-message');
+    errorMessage.innerText = `Wan only supports a single image as input.`;
+    errorModal.showModal();
+    return;
+  }
 
   working = true;
   inputEle.disabled = true;
@@ -246,6 +249,11 @@ async function submit() {
       body.set('resolution', document.getElementById('seedance-resolution').value);
       body.set('aspect_ratio', document.getElementById('seedance-aspect-ratio').value);
       body.set('camera_fixed', document.getElementById('seedance-camera-fixed').checked);
+    }
+
+    if (service === 'wan') {
+      body.set('resolution', document.getElementById('wan-resolution').value);
+      body.set('aspect_ratio', document.getElementById('wan-aspect-ratio').value);
     }
 
     if (service === 'openai' && inputImages.length > 0) {
@@ -284,7 +292,7 @@ async function submit() {
     let data = base64ToUint8Array(b64);
     let blob, url, element, filename;
 
-    if (service === 'seedance') {
+    if (videos.includes(service)) {
       blob = new Blob([data], { type: 'video/mp4' });
       url = URL.createObjectURL(blob);
       element = document.createElement('video');
@@ -313,20 +321,18 @@ async function submit() {
     await save([opfsDir], filename, data);
     await save([opfsDir], `${ts}--prompt.txt`, new TextEncoder().encode(prompt));
     let settingsText = `service: ${service}\n`;
-    if (service === 'seedance') {
+    if (service === 'openai' && inputImages.length > 0) {
+      settingsText += `input_fidelity: ${document.querySelector('input[name="openai-input-fidelity"]:checked').value}\n`;
+    } else if (service === 'seedance') {
       settingsText += `fps: ${document.getElementById('seedance-fps').value}\n`;
       settingsText += `duration: ${document.getElementById('seedance-duration').value}\n`;
       settingsText += `resolution: ${document.getElementById('seedance-resolution').value}\n`;
       settingsText += `aspect_ratio: ${document.getElementById('seedance-aspect-ratio').value}\n`;
       settingsText += `camera_fixed: ${document.getElementById('seedance-camera-fixed').checked}\n`;
-    }
-    if (service === 'openai' && inputImages.length > 0) {
-      settingsText += `input_fidelity: ${document.querySelector('input[name="openai-input-fidelity"]:checked').value}\n`;
-    }
-    // if (service === 'kontext') {
-    //   settingsText += `prompt_upsampling: ${document.getElementById('kontext-prompt-upsampling').checked}\n`;
-    // }
-    if (service === 'qwen') {
+    } else if (service === 'wan') {
+      settingsText += `resolution: ${document.getElementById('wan-resolution').value}\n`;
+      settingsText += `aspect_ratio: ${document.getElementById('wan-aspect-ratio').value}\n`;
+    } else if (service === 'qwen') {
       settingsText += `aspect_ratio: ${document.getElementById('qwen-aspect-ratio').value}\n`;
       settingsText += `realism: ${document.getElementById('qwen-realism').value}\n`;
     }
@@ -348,13 +354,15 @@ addEventListener('DOMContentLoaded', async () => {
   // show/hide service-specific parameters based on service selection
   function toggleServiceSpecificInputs() {
     let service = document.querySelector('input[name="service"]:checked').value;
-    let seedanceParams = document.getElementById('seedance-params');
     let openaiParams = document.getElementById('openai-params');
+    let seedanceParams = document.getElementById('seedance-params');
+    let wanParams = document.getElementById('wan-params');
     // let kontextParams = document.getElementById('kontext-params');
     let qwenParams = document.getElementById('qwen-params');
 
-    seedanceParams.style.display = service === 'seedance' ? 'block' : 'none';
     openaiParams.style.display = service === 'openai' ? 'block' : 'none';
+    seedanceParams.style.display = service === 'seedance' ? 'block' : 'none';
+    wanParams.style.display = service === 'wan' ? 'block' : 'none';
     // kontextParams.style.display = service === 'kontext' ? 'block' : 'none';
     qwenParams.style.display = service === 'qwen' ? 'block' : 'none';
   }

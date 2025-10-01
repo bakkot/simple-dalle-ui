@@ -333,6 +333,9 @@
         <input type="radio" id="seedance" name="service" value="seedance">
         <label for="seedance">seedance (video)</label>
 
+        <input type="radio" id="wan" name="service" value="wan">
+        <label for="wan">wan (video)</label>
+
         <input type="radio" id="qwen" name="service" value="qwen">
         <label for="qwen">qwen</label>
       </div>
@@ -390,6 +393,28 @@
         </div>
       </div>
 
+      <div id="wan-params" style="display: none; margin-top: 1em;">
+        <div style="margin-bottom: 1em;">
+          Costs about 20¢ for 480p or 40¢ for 1080p, and takes about a minute to generate. Can take 0 or 1 image as inputs.
+        </div>
+
+        <div style="margin-top: 0.5em;">
+          <label for="wan-resolution">resolution:</label>
+          <select id="wan-resolution" name="wan-resolution">
+            <option value="480p" selected>480p</option>
+            <option value="720p">720p</option>
+          </select>
+
+          <label for="wan-aspect-ratio" style="margin-left: 1em;">aspect ratio:</label>
+          <select id="wan-aspect-ratio" name="wan-aspect-ratio">
+            <option value="auto" selected>auto</option>
+            <option value="16:9">16:9</option>
+            <option value="9:16">9:16</option>
+            <option value="1:1">1:1</option>
+          </select>
+        </div>
+      </div>
+
       <!-- <div id="kontext-params" style="display: none; margin-top: 1em;">
         <div>
           <label for="kontext-prompt-upsampling">
@@ -400,6 +425,10 @@
       </div> -->
 
       <div id="qwen-params" style="display: none; margin-top: 1em;">
+        <div style="margin-bottom: 1em;">
+          Supports text-to-image as well as image-to-image with any number of images.
+        </div>
+
         <div style="margin-bottom: 0.5em;">
           <label for="qwen-aspect-ratio">aspect ratio:</label>
           <select id="qwen-aspect-ratio" name="qwen-aspect-ratio">
