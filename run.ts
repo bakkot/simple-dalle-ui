@@ -54,7 +54,7 @@ app.post('/check-user', (req, res) => {
 });
 
 app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), async (req, res) => {
-  let { prompt, ts, service, user, fps, duration, resolution, aspect_ratio, camera_fixed, input_fidelity, enhance_prompt, guidance, prompt_upsampling } = req.body;
+  let { prompt, ts, service, user, fps, duration, resolution, aspect_ratio, camera_fixed, input_fidelity, enhance_prompt, guidance, prompt_upsampling, nanobanana_resolution } = req.body;
   if (!ALLOWED_USERS.includes(user)) {
     res.status(403);
     res.send('unknown user');
@@ -74,6 +74,8 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
     } else if (service === 'qwen') {
       settingsText += `aspect_ratio: ${aspect_ratio}\n`;
       settingsText += `guidance: ${guidance}\n`;
+    } else if (service === 'nanobanana') {
+      settingsText += `resolution: ${nanobanana_resolution}\n`;
     }
     fs.writeFileSync(path.join(outdir, `${ts}--settings.txt`), settingsText, 'utf8');
     if (Array.isArray(req.files)) {
@@ -197,6 +199,20 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
           model = 'fal-ai/qwen-image-edit-plus';
           input.image_urls = req.files.map(f => new File([f.buffer], f.filename));
         }
+      }
+
+      let res = await fal.subscribe(model, { input });
+      let { url } = res.data.images[0];
+      output_base64 = await fetchToBase64(url);
+    } else if (service === 'nanobanana') {
+      let input: any = {
+        prompt,
+        resolution: nanobanana_resolution || '1K',
+      };
+      let model = 'fal-ai/nano-banana-pro';
+      if (Array.isArray(req.files) && req.files.length > 0) {
+        model = 'fal-ai/nano-banana-pro/edit';
+        input.image_urls = req.files.map(f => new File([f.buffer], f.filename));
       }
 
       let res = await fal.subscribe(model, { input });

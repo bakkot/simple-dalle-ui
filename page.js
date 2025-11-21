@@ -271,6 +271,10 @@ async function submit() {
       body.set('guidance', guidanceValue);
     }
 
+    if (service === 'nanobanana') {
+      body.set('nanobanana_resolution', document.getElementById('nanobanana-resolution').value);
+    }
+
     for (let image of inputImages) {
       body.append('images', image);
     }
@@ -335,6 +339,8 @@ async function submit() {
     } else if (service === 'qwen') {
       settingsText += `aspect_ratio: ${document.getElementById('qwen-aspect-ratio').value}\n`;
       settingsText += `realism: ${document.getElementById('qwen-realism').value}\n`;
+    } else if (service === 'nanobanana') {
+      settingsText += `resolution: ${document.getElementById('nanobanana-resolution').value}\n`;
     }
     await save([opfsDir], `${ts}--settings.txt`, new TextEncoder().encode(settingsText));
   } catch (e) {
@@ -359,12 +365,14 @@ addEventListener('DOMContentLoaded', async () => {
     let wanParams = document.getElementById('wan-params');
     // let kontextParams = document.getElementById('kontext-params');
     let qwenParams = document.getElementById('qwen-params');
+    let nanobananaParams = document.getElementById('nanobanana-params');
 
     openaiParams.style.display = service === 'openai' ? 'block' : 'none';
     seedanceParams.style.display = service === 'seedance' ? 'block' : 'none';
     wanParams.style.display = service === 'wan' ? 'block' : 'none';
     // kontextParams.style.display = service === 'kontext' ? 'block' : 'none';
     qwenParams.style.display = service === 'qwen' ? 'block' : 'none';
+    nanobananaParams.style.display = service === 'nanobanana' ? 'block' : 'none';
   }
 
   document.querySelectorAll('input[name="service"]').forEach(radio => {

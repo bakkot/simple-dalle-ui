@@ -330,14 +330,19 @@
         <!-- <input type="radio" id="kontext" name="service" value="kontext">
         <label for="kontext">kontext</label> -->
 
+        <input type="radio" id="qwen" name="service" value="qwen">
+        <label for="qwen">qwen</label>
+
+        <input type="radio" id="nanobanana" name="service" value="nanobanana">
+        <label for="nanobanana">nano-banana pro</label>
+
+        <br>
+
         <input type="radio" id="seedance" name="service" value="seedance">
         <label for="seedance">seedance (video)</label>
 
         <input type="radio" id="wan" name="service" value="wan">
         <label for="wan">wan (video)</label>
-
-        <input type="radio" id="qwen" name="service" value="qwen">
-        <label for="qwen">qwen</label>
       </div>
 
       <div id="openai-params" style="display: none; margin-top: 1em;">
@@ -444,6 +449,21 @@
             <option value="max">max</option>
             <option value="medium" selected>medium</option>
             <option value="min">min</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="nanobanana-params" style="display: none; margin-top: 1em;">
+        <div style="margin-bottom: 1em;">
+          Supports text-to-image as well as image-to-image with any number of images. Costs about $0.15.
+        </div>
+
+        <div style="margin-bottom: 0.5em;">
+          <label for="nanobanana-resolution">resolution:</label>
+          <select id="nanobanana-resolution" name="nanobanana-resolution">
+            <option value="1K" selected>1K</option>
+            <option value="2K">2K</option>
+            <option value="4K">4K</option>
           </select>
         </div>
       </div>
