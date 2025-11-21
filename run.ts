@@ -23,6 +23,8 @@ if (SAVE_OUTPUTS) {
   fs.mkdirSync(outdir, { recursive: true });
 }
 
+let videos = ['seedance', 'wan'];
+
 async function fetchToBase64(url: string) {
   const response = await fetch(url);
   const arrayBuffer = await response.arrayBuffer();
@@ -214,7 +216,7 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
 
   if (SAVE_OUTPUTS) {
     // Save the output to a file
-    let filename = service === 'seedance' ? `${ts}--video.mp4` : `${ts}--image.png`;
+    let filename = videos.includes(service) ? `${ts}--video.mp4` : `${ts}--image.png`;
     fs.writeFileSync(path.join(outdir, filename), Buffer.from(output_base64, 'base64'));
   }
 
