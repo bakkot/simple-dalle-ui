@@ -96,7 +96,7 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
       let res;
       if (Array.isArray(req.files) && req.files.length > 0) {
         let editParams: any = {
-          model: 'gpt-image-1',
+          model: 'gpt-image-1.5',
           prompt,
           image: await Promise.all(req.files.map(f => OpenAI.toFile(f.buffer, f.originalname, { type: f.mimetype }))),
           quality: 'high',
@@ -107,7 +107,7 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
         res = await openai.images.edit(editParams);
       } else {
         res = await openai.images.generate({
-          model: 'gpt-image-1',
+          model: 'gpt-image-1.5',
           prompt,
           // size: '1024x1024',
           size: 'auto',
@@ -149,7 +149,7 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
         }
         model = 'fal-ai/bytedance/seedance/v1/pro/image-to-video';
         let f = req.files[0];
-        input.image_url = new File([f.buffer], f.filename);
+        input.image_url = new File([f.buffer as Buffer<ArrayBuffer>], f.filename);
       }
 
       let res = await fal.subscribe(model, { input });
@@ -170,7 +170,7 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
         }
         model = 'fal-ai/wan/v2.2-a14b/image-to-video';
         let f = req.files[0];
-        input.image_url = new File([f.buffer], f.filename);
+        input.image_url = new File([f.buffer as Buffer<ArrayBuffer>], f.filename);
       } else if (input.aspect_ratio === 'auto') {
         // auto aspect ratio is only supported for i2v
         input.aspect_ratio = '16:9';
@@ -194,10 +194,10 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
         if (req.files.length === 1) {
           model = 'fal-ai/qwen-image-edit/image-to-image';
           let f = req.files[0];
-          input.image_url = new File([f.buffer], f.filename);
+          input.image_url = new File([f.buffer as Buffer<ArrayBuffer>], f.filename);
         } else {
           model = 'fal-ai/qwen-image-edit-plus';
-          input.image_urls = req.files.map(f => new File([f.buffer], f.filename));
+          input.image_urls = req.files.map(f => new File([f.buffer as Buffer<ArrayBuffer>], f.filename));
         }
       }
 
@@ -212,7 +212,7 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
       let model = 'fal-ai/nano-banana-pro';
       if (Array.isArray(req.files) && req.files.length > 0) {
         model = 'fal-ai/nano-banana-pro/edit';
-        input.image_urls = req.files.map(f => new File([f.buffer], f.filename));
+        input.image_urls = req.files.map(f => new File([f.buffer as Buffer<ArrayBuffer>], f.filename));
       }
 
       let res = await fal.subscribe(model, { input });
