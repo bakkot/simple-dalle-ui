@@ -96,7 +96,7 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
       let res;
       if (Array.isArray(req.files) && req.files.length > 0) {
         let editParams: any = {
-          model: 'gpt-image-1.5',
+          model: 'gpt-image-2',
           prompt,
           image: await Promise.all(req.files.map(f => OpenAI.toFile(f.buffer, f.originalname, { type: f.mimetype }))),
           quality: 'high',
@@ -107,7 +107,7 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
         res = await openai.images.edit(editParams);
       } else {
         res = await openai.images.generate({
-          model: 'gpt-image-1.5',
+          model: 'gpt-image-2',
           prompt,
           // size: '1024x1024',
           size: 'auto',
