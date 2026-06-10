@@ -257,7 +257,7 @@ async function submit() {
     }
 
     if (service === 'openai' && inputImages.length > 0) {
-      body.set('input_fidelity', document.querySelector('input[name="openai-input-fidelity"]:checked').value);
+      // body.set('input_fidelity', document.querySelector('input[name="openai-input-fidelity"]:checked').value);
     }
 
     // if (service === 'kontext') {
@@ -326,7 +326,7 @@ async function submit() {
     await save([opfsDir], `${ts}--prompt.txt`, new TextEncoder().encode(prompt));
     let settingsText = `service: ${service}\n`;
     if (service === 'openai' && inputImages.length > 0) {
-      settingsText += `input_fidelity: ${document.querySelector('input[name="openai-input-fidelity"]:checked').value}\n`;
+      // settingsText += `input_fidelity: ${document.querySelector('input[name="openai-input-fidelity"]:checked').value}\n`;
     } else if (service === 'seedance') {
       settingsText += `fps: ${document.getElementById('seedance-fps').value}\n`;
       settingsText += `duration: ${document.getElementById('seedance-duration').value}\n`;
