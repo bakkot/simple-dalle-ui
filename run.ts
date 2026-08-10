@@ -24,7 +24,7 @@ if (SAVE_OUTPUTS) {
   fs.mkdirSync(outdir, { recursive: true });
 }
 
-let videos = ['seedance', 'wan'];
+let videos = ['seedance', 'wan', 'h3'];
 
 // how long to wait for the upstream API before switching to the poll-for-a-result strategy
 let LONG_POLL_TIMEOUT = 5_000;
@@ -76,7 +76,7 @@ app.post('/check-user', (req, res) => {
 });
 
 app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), async (req, res) => {
-  let { prompt, ts, service, user, fps, duration, resolution, aspect_ratio, camera_fixed, input_fidelity, enhance_prompt, guidance, prompt_upsampling, nanobanana_resolution } = req.body;
+  let { prompt, ts, service, user, fps, duration, resolution, aspect_ratio, camera_fixed, input_fidelity, enhance_prompt, guidance, prompt_upsampling, nanobanana_resolution, prompt_expansion } = req.body;
   if (!ALLOWED_USERS.includes(user)) {
     res.status(403);
     res.send('unknown user');
@@ -95,6 +95,8 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
       settingsText += `fps: ${fps}\nduration: ${duration}\nresolution: ${resolution}\naspect_ratio: ${aspect_ratio}\ncamera_fixed: ${camera_fixed}\n`;
     } else if (service === 'wan') {
       settingsText += `resolution: ${resolution}\naspect_ratio: ${aspect_ratio}\n`;
+    } else if (service === 'h3') {
+      settingsText += `duration: ${duration}\nresolution: ${resolution}\naspect_ratio: ${aspect_ratio}\nprompt_expansion: ${prompt_expansion}\n`;
     } else if (service === 'qwen') {
       settingsText += `aspect_ratio: ${aspect_ratio}\n`;
       settingsText += `guidance: ${guidance}\n`;
@@ -197,6 +199,31 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
         input.image_url = new File([f.buffer as Buffer<ArrayBuffer>], f.filename);
       } else if (input.aspect_ratio === 'auto') {
         // auto aspect ratio is only supported for i2v
+        input.aspect_ratio = '16:9';
+      }
+
+      let res = await fal.subscribe(model, { input });
+      let { url } = res.data.video;
+      output_base64 = await fetchToBase64(url);
+    } else if (service === 'h3') {
+      let input: any = {
+        prompt,
+        duration: parseInt(duration) || 5,
+        resolution: resolution || '2K',
+        aspect_ratio: aspect_ratio || 'adaptive',
+        enable_prompt_expansion: prompt_expansion === 'true',
+        enable_safety_checker: false,
+      };
+
+      let model = 'minimax/h3/text-to-video';
+      if (Array.isArray(req.files) && req.files.length > 0) {
+        if (req.files.length > 9) {
+          throw new Error('h3 supports at most nine images as input');
+        }
+        model = 'minimax/h3/reference-to-video';
+        input.reference_image_urls = req.files.map(f => new File([f.buffer as Buffer<ArrayBuffer>], f.filename));
+      } else if (input.aspect_ratio === 'adaptive') {
+        // adaptive aspect ratio is only supported when there are references
         input.aspect_ratio = '16:9';
       }
 

@@ -343,6 +343,9 @@
 
         <input type="radio" id="wan" name="service" value="wan">
         <label for="wan">wan (video)</label>
+
+        <input type="radio" id="h3" name="service" value="h3">
+        <label for="h3">h3 (video)</label>
       </div>
 
       <div id="openai-params" style="display: none; margin-top: 1em;">
@@ -417,6 +420,46 @@
             <option value="9:16">9:16</option>
             <option value="1:1">1:1</option>
           </select>
+        </div>
+      </div>
+
+      <div id="h3-params" style="display: none; margin-top: 1em;">
+        <div style="margin-bottom: 1em;">
+          MiniMax Hailuo 03. Takes 0 to 9 images as inputs; refer to them in the prompt as "Image 1", "Image 2", and so on.
+        </div>
+
+        <div style="margin-top: 0.5em;">
+          <label for="h3-duration">duration:</label>
+          <select id="h3-duration" name="h3-duration">
+            <option value="5" selected>5s</option>
+            <option value="10">10s</option>
+            <option value="15">15s</option>
+          </select>
+
+          <label for="h3-resolution" style="margin-left: 1em;">resolution:</label>
+          <select id="h3-resolution" name="h3-resolution">
+            <option value="768P">768p</option>
+            <option value="2K" selected>2K</option>
+            <option value="4K">4K</option>
+          </select>
+
+          <label for="h3-aspect-ratio" style="margin-left: 1em;">aspect ratio:</label>
+          <select id="h3-aspect-ratio" name="h3-aspect-ratio">
+            <option value="adaptive" selected>adaptive</option>
+            <option value="21:9">21:9</option>
+            <option value="16:9">16:9</option>
+            <option value="4:3">4:3</option>
+            <option value="1:1">1:1</option>
+            <option value="3:4">3:4</option>
+            <option value="9:16">9:16</option>
+          </select>
+        </div>
+
+        <div style="margin-top: 0.5em;">
+          <label for="h3-prompt-expansion">
+            <input type="checkbox" id="h3-prompt-expansion" name="h3-prompt-expansion">
+            LLM prompt assist
+          </label>
         </div>
       </div>
 
