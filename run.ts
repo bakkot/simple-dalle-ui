@@ -332,7 +332,8 @@ app.get('/poll/:id', (req, res) => {
   if (result == null) {
     res.json({ state: 'error', error: 'no longer serving this ID' });
   } else if (result.state === 'done') {
-    res.json({ state: 'done', url: `/results/${req.params.id}.${result.ext}` });
+    // relative to the poll URL, so this works regardless of where the app is mounted
+    res.json({ state: 'done', url: `../results/${req.params.id}.${result.ext}` });
   } else if (result.state === 'error') {
     res.json({ state: 'error', error: result.error });
   } else {

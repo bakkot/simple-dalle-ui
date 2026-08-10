@@ -288,9 +288,11 @@ async function pollForResult(id) {
   while (true) {
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    let status;
+    let status, pollUrl;
     try {
-      status = await (await fetch(`./poll/${encodeURIComponent(id)}`)).json();
+      let pollRes = await fetch(`./poll/${encodeURIComponent(id)}`);
+      pollUrl = pollRes.url;
+      status = await pollRes.json();
     } catch (e) {
       // transient network error, presumably; keep trying
       console.error(e);
@@ -305,7 +307,8 @@ async function pollForResult(id) {
       throw new Error(`unknown state ${status.state}`);
     }
 
-    let res = await fetch(status.url);
+    // status.url is relative to the poll URL
+    let res = await fetch(new URL(status.url, pollUrl));
     if (!res.ok) {
       throw new Error(`failed to fetch result: ${res.status}`);
     }
