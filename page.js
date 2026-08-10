@@ -45,6 +45,78 @@ let removeActiveImage = () => {
 
 let videos = ['seedance', 'wan'];
 
+// key for the in-progress generation, so we can resume polling after a reload
+let pendingKey = 'dalle-ui-pending';
+
+// service-specific settings, by the id of the element holding them
+let serviceFields = {
+  openai: [],
+  seedance: ['seedance-fps', 'seedance-duration', 'seedance-resolution', 'seedance-aspect-ratio', 'seedance-camera-fixed'],
+  wan: ['wan-resolution', 'wan-aspect-ratio'],
+  qwen: ['qwen-aspect-ratio', 'qwen-realism'],
+  nanobanana: ['nanobanana-resolution'],
+};
+
+function collectOptions(service) {
+  let options = {};
+  for (let id of serviceFields[service] ?? []) {
+    let ele = document.getElementById(id);
+    options[id] = ele.type === 'checkbox' ? ele.checked : ele.value;
+  }
+  return options;
+}
+
+function applyOptions(service, options) {
+  for (let id of serviceFields[service] ?? []) {
+    if (!(id in options)) continue;
+    let ele = document.getElementById(id);
+    if (ele.type === 'checkbox') {
+      ele.checked = options[id];
+    } else {
+      ele.value = options[id];
+    }
+  }
+}
+
+function optionsToBody(service, options, body) {
+  if (service === 'seedance') {
+    body.set('fps', options['seedance-fps']);
+    body.set('duration', options['seedance-duration']);
+    body.set('resolution', options['seedance-resolution']);
+    body.set('aspect_ratio', options['seedance-aspect-ratio']);
+    body.set('camera_fixed', options['seedance-camera-fixed']);
+  } else if (service === 'wan') {
+    body.set('resolution', options['wan-resolution']);
+    body.set('aspect_ratio', options['wan-aspect-ratio']);
+  } else if (service === 'qwen') {
+    body.set('aspect_ratio', options['qwen-aspect-ratio']);
+    let realismLevel = options['qwen-realism'];
+    body.set('guidance', realismLevel === 'max' ? '2' : realismLevel === 'medium' ? '3' : '4');
+  } else if (service === 'nanobanana') {
+    body.set('nanobanana_resolution', options['nanobanana-resolution']);
+  }
+}
+
+function optionsToSettingsText(service, options) {
+  let settingsText = `service: ${service}\n`;
+  if (service === 'seedance') {
+    settingsText += `fps: ${options['seedance-fps']}\n`;
+    settingsText += `duration: ${options['seedance-duration']}\n`;
+    settingsText += `resolution: ${options['seedance-resolution']}\n`;
+    settingsText += `aspect_ratio: ${options['seedance-aspect-ratio']}\n`;
+    settingsText += `camera_fixed: ${options['seedance-camera-fixed']}\n`;
+  } else if (service === 'wan') {
+    settingsText += `resolution: ${options['wan-resolution']}\n`;
+    settingsText += `aspect_ratio: ${options['wan-aspect-ratio']}\n`;
+  } else if (service === 'qwen') {
+    settingsText += `aspect_ratio: ${options['qwen-aspect-ratio']}\n`;
+    settingsText += `realism: ${options['qwen-realism']}\n`;
+  } else if (service === 'nanobanana') {
+    settingsText += `resolution: ${options['nanobanana-resolution']}\n`;
+  }
+  return settingsText;
+}
+
 let activeImg = null;
 function addHistoryItem(blob, prompt, ts, service) {
   let url = URL.createObjectURL(blob);
@@ -181,6 +253,131 @@ document.addEventListener('keydown', e => {
 });
 
 let working = false;
+
+function setWorking(isWorking) {
+  working = isWorking;
+
+  let controls = [document.querySelector('.input'), document.getElementById('imageUpload'), ...document.querySelectorAll('input[name="service"]')];
+  for (let ids of Object.values(serviceFields)) {
+    for (let id of ids) {
+      controls.push(document.getElementById(id));
+    }
+  }
+  for (let control of controls) {
+    control.disabled = isWorking;
+  }
+
+  let output = document.querySelector('.output');
+  output.style.display = isWorking ? 'none' : '';
+  document.querySelector('.spinner').style.display = isWorking ? 'flex' : '';
+}
+
+// poll until the server has a result for this id, then fetch it
+async function pollForResult(id) {
+  while (true) {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    let status;
+    try {
+      status = await (await fetch(`./poll/${encodeURIComponent(id)}`)).json();
+    } catch (e) {
+      // transient network error, presumably; keep trying
+      console.error(e);
+      continue;
+    }
+
+    if (status.state === 'working') continue;
+    if (status.state === 'error') {
+      throw new Error(status.error ?? 'unknown error');
+    }
+    if (status.state !== 'done') {
+      throw new Error(`unknown state ${status.state}`);
+    }
+
+    let res = await fetch(status.url);
+    if (!res.ok) {
+      throw new Error(`failed to fetch result: ${res.status}`);
+    }
+    return new Uint8Array(await res.arrayBuffer());
+  }
+}
+
+// display and persist a finished generation
+async function finish(data, prompt, ts, service, options) {
+  let output = document.querySelector('.output');
+  let blob, url, element, filename;
+
+  if (videos.includes(service)) {
+    blob = new Blob([data], { type: 'video/mp4' });
+    url = URL.createObjectURL(blob);
+    element = document.createElement('video');
+    element.src = url;
+    element.style.maxWidth = '512px';
+    element.style.maxHeight = '512px';
+    element.controls = true;
+    element.loop = true;
+    element.muted = true;
+    element.autoplay = true;
+    filename = `${ts}--video.mp4`;
+  } else {
+    blob = new Blob([data], { type: 'image/png' });
+    url = URL.createObjectURL(blob);
+    element = document.createElement('img');
+    element.src = url;
+    element.style.maxWidth = '512px';
+    element.style.maxHeight = '512px';
+    filename = `${ts}--image.png`;
+  }
+
+  output.prepend(element);
+
+  addHistoryItem(blob, prompt, ts, service);
+
+  await save([opfsDir], filename, data);
+  await save([opfsDir], `${ts}--prompt.txt`, new TextEncoder().encode(prompt));
+  await save([opfsDir], `${ts}--settings.txt`, new TextEncoder().encode(optionsToSettingsText(service, options)));
+}
+
+// pick up an in-flight generation from a previous page load
+async function resume() {
+  let pending;
+  try {
+    pending = JSON.parse(localStorage.getItem(pendingKey));
+  } catch {
+    pending = null;
+  }
+  if (pending == null) return;
+  let { id, prompt, ts, service, options } = pending;
+
+  let serviceRadio = document.querySelector(`input[name="service"][value="${service}"]`);
+  if (serviceRadio) {
+    serviceRadio.checked = true;
+  }
+  applyOptions(service, options ?? {});
+  toggleServiceSpecificInputs();
+
+  let inputEle = document.querySelector('.input');
+  inputEle.value = prompt;
+  inputEle.parentNode.dataset.replicatedValue = prompt;
+
+  let bq = document.querySelector('.output blockquote');
+  bq.innerText = '';
+  bq.style.color = '';
+
+  setWorking(true);
+  try {
+    let data = await pollForResult(id);
+    localStorage.removeItem(pendingKey);
+    await finish(data, prompt, ts, service, options ?? {});
+  } catch (e) {
+    console.error(e);
+    localStorage.removeItem(pendingKey);
+    bq.innerText = 'ERROR: ' + e.message;
+    bq.style.color = 'red';
+  }
+  setWorking(false);
+}
+
 async function submit() {
   if (working) return;
 
@@ -220,20 +417,15 @@ async function submit() {
     return;
   }
 
-  working = true;
-  inputEle.disabled = true;
-
   let output = document.querySelector('.output');
-  output.style.display = 'none';
-
   output.querySelector('img')?.remove();
   output.querySelector('video')?.remove();
   let bq = output.querySelector('blockquote');
   bq.innerText = '';
   bq.style.color = '';
 
-  let spinner = document.querySelector('.spinner');
-  spinner.style.display = 'flex';
+  let options = collectOptions(service);
+  setWorking(true);
 
   try {
     let ts = new Date().toISOString().replace(/:/g, '_');
@@ -243,18 +435,7 @@ async function submit() {
     body.set('service', service);
     body.set('user', user);
 
-    if (service === 'seedance') {
-      body.set('fps', document.getElementById('seedance-fps').value);
-      body.set('duration', document.getElementById('seedance-duration').value);
-      body.set('resolution', document.getElementById('seedance-resolution').value);
-      body.set('aspect_ratio', document.getElementById('seedance-aspect-ratio').value);
-      body.set('camera_fixed', document.getElementById('seedance-camera-fixed').checked);
-    }
-
-    if (service === 'wan') {
-      body.set('resolution', document.getElementById('wan-resolution').value);
-      body.set('aspect_ratio', document.getElementById('wan-aspect-ratio').value);
-    }
+    optionsToBody(service, options, body);
 
     if (service === 'openai' && inputImages.length > 0) {
       // body.set('input_fidelity', document.querySelector('input[name="openai-input-fidelity"]:checked').value);
@@ -263,17 +444,6 @@ async function submit() {
     // if (service === 'kontext') {
     //   body.set('prompt_upsampling', document.getElementById('kontext-prompt-upsampling').checked);
     // }
-
-    if (service === 'qwen') {
-      body.set('aspect_ratio', document.getElementById('qwen-aspect-ratio').value);
-      let realismLevel = document.getElementById('qwen-realism').value;
-      let guidanceValue = realismLevel === 'max' ? '2' : realismLevel === 'medium' ? '3' : '4';
-      body.set('guidance', guidanceValue);
-    }
-
-    if (service === 'nanobanana') {
-      body.set('nanobanana_resolution', document.getElementById('nanobanana-resolution').value);
-    }
 
     for (let image of inputImages) {
       body.append('images', image);
@@ -291,90 +461,49 @@ async function submit() {
       throw new Error(message);
     }
 
-    let { b64 } = res;
-
-    let data = base64ToUint8Array(b64);
-    let blob, url, element, filename;
-
-    if (videos.includes(service)) {
-      blob = new Blob([data], { type: 'video/mp4' });
-      url = URL.createObjectURL(blob);
-      element = document.createElement('video');
-      element.src = url;
-      element.style.maxWidth = '512px';
-      element.style.maxHeight = '512px';
-      element.controls = true;
-      element.loop = true;
-      element.muted = true;
-      element.autoplay = true;
-      filename = `${ts}--video.mp4`;
+    let data;
+    if (res.id != null) {
+      // slow generation: the server will hold the result for us, so remember it in case the page goes away
+      localStorage.setItem(pendingKey, JSON.stringify({ id: res.id, prompt, ts, service, options }));
+      try {
+        data = await pollForResult(res.id);
+      } finally {
+        localStorage.removeItem(pendingKey);
+      }
     } else {
-      blob = new Blob([data], { type: 'image/png' });
-      url = URL.createObjectURL(blob);
-      element = document.createElement('img');
-      element.src = url;
-      element.style.maxWidth = '512px';
-      element.style.maxHeight = '512px';
-      filename = `${ts}--image.png`;
+      data = base64ToUint8Array(res.b64);
     }
 
-    output.prepend(element);
-
-    addHistoryItem(blob, prompt, ts, service);
-
-    await save([opfsDir], filename, data);
-    await save([opfsDir], `${ts}--prompt.txt`, new TextEncoder().encode(prompt));
-    let settingsText = `service: ${service}\n`;
-    if (service === 'openai' && inputImages.length > 0) {
-      // settingsText += `input_fidelity: ${document.querySelector('input[name="openai-input-fidelity"]:checked').value}\n`;
-    } else if (service === 'seedance') {
-      settingsText += `fps: ${document.getElementById('seedance-fps').value}\n`;
-      settingsText += `duration: ${document.getElementById('seedance-duration').value}\n`;
-      settingsText += `resolution: ${document.getElementById('seedance-resolution').value}\n`;
-      settingsText += `aspect_ratio: ${document.getElementById('seedance-aspect-ratio').value}\n`;
-      settingsText += `camera_fixed: ${document.getElementById('seedance-camera-fixed').checked}\n`;
-    } else if (service === 'wan') {
-      settingsText += `resolution: ${document.getElementById('wan-resolution').value}\n`;
-      settingsText += `aspect_ratio: ${document.getElementById('wan-aspect-ratio').value}\n`;
-    } else if (service === 'qwen') {
-      settingsText += `aspect_ratio: ${document.getElementById('qwen-aspect-ratio').value}\n`;
-      settingsText += `realism: ${document.getElementById('qwen-realism').value}\n`;
-    } else if (service === 'nanobanana') {
-      settingsText += `resolution: ${document.getElementById('nanobanana-resolution').value}\n`;
-    }
-    await save([opfsDir], `${ts}--settings.txt`, new TextEncoder().encode(settingsText));
+    await finish(data, prompt, ts, service, options);
   } catch (e) {
     console.error(e);
     bq.innerText = 'ERROR: ' + e.message;
     bq.style.color = 'red';
   }
-  working = false;
-  inputEle.disabled = false;
-  output.style.display = '';
-  spinner.style.display = '';
+  setWorking(false);
 }
 
 let inputImages = [];
 
+// show/hide service-specific parameters based on service selection
+function toggleServiceSpecificInputs() {
+  let service = document.querySelector('input[name="service"]:checked').value;
+  let openaiParams = document.getElementById('openai-params');
+  let seedanceParams = document.getElementById('seedance-params');
+  let wanParams = document.getElementById('wan-params');
+  // let kontextParams = document.getElementById('kontext-params');
+  let qwenParams = document.getElementById('qwen-params');
+  let nanobananaParams = document.getElementById('nanobanana-params');
+
+  openaiParams.style.display = service === 'openai' ? 'block' : 'none';
+  seedanceParams.style.display = service === 'seedance' ? 'block' : 'none';
+  wanParams.style.display = service === 'wan' ? 'block' : 'none';
+  // kontextParams.style.display = service === 'kontext' ? 'block' : 'none';
+  qwenParams.style.display = service === 'qwen' ? 'block' : 'none';
+  nanobananaParams.style.display = service === 'nanobanana' ? 'block' : 'none';
+}
+
 addEventListener('DOMContentLoaded', async () => {
-  // show/hide service-specific parameters based on service selection
-  function toggleServiceSpecificInputs() {
-    let service = document.querySelector('input[name="service"]:checked').value;
-    let openaiParams = document.getElementById('openai-params');
-    let seedanceParams = document.getElementById('seedance-params');
-    let wanParams = document.getElementById('wan-params');
-    // let kontextParams = document.getElementById('kontext-params');
-    let qwenParams = document.getElementById('qwen-params');
-    let nanobananaParams = document.getElementById('nanobanana-params');
-
-    openaiParams.style.display = service === 'openai' ? 'block' : 'none';
-    seedanceParams.style.display = service === 'seedance' ? 'block' : 'none';
-    wanParams.style.display = service === 'wan' ? 'block' : 'none';
-    // kontextParams.style.display = service === 'kontext' ? 'block' : 'none';
-    qwenParams.style.display = service === 'qwen' ? 'block' : 'none';
-    nanobananaParams.style.display = service === 'nanobanana' ? 'block' : 'none';
-  }
-
   document.querySelectorAll('input[name="service"]').forEach(radio => {
     radio.addEventListener('change', toggleServiceSpecificInputs);
   });
@@ -389,6 +518,9 @@ addEventListener('DOMContentLoaded', async () => {
 
   // Ensure params are shown/hidden correctly after loading saved service
   toggleServiceSpecificInputs();
+
+  // if a generation was in flight when the page was closed, pick it back up
+  resume();
 
   // history dialog
 

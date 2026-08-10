@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as crypto from 'node:crypto';
 import express from 'express';
 import multer from 'multer';
 import OpenAI from 'openai';
@@ -24,6 +25,27 @@ if (SAVE_OUTPUTS) {
 }
 
 let videos = ['seedance', 'wan'];
+
+// how long to wait for the upstream API before switching to the poll-for-a-result strategy
+let LONG_POLL_TIMEOUT = 5_000;
+let RESULT_TTL = 24 * 60 * 60 * 1000;
+
+type Result =
+  | { state: 'working'; ts: number; ext: string }
+  | { state: 'error'; ts: number; ext: string; error: string }
+  | { state: 'done'; ts: number; ext: string; buffer: Buffer };
+
+// not persisted; results are lost on restart, which is fine
+let results = new Map<string, Result>();
+
+function sweepResults() {
+  let now = Date.now();
+  for (let [id, result] of results) {
+    if (now - result.ts > RESULT_TTL) {
+      results.delete(id);
+    }
+  }
+}
 
 async function fetchToBase64(url: string) {
   const response = await fetch(url);
@@ -62,6 +84,8 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
   }
   console.log(`working (${service})...`);
 
+  sweepResults();
+
   if (SAVE_OUTPUTS) {
     fs.writeFileSync(path.join(outdir, `${ts}--prompt.txt`), prompt, 'utf8');
     let settingsText = `user: ${user}\nservice: ${service}\n`;
@@ -90,8 +114,8 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
     }
   }
 
-  let output_base64: string;
-  try {
+  let generate = async (): Promise<string> => {
+    let output_base64: string;
     if (service === 'openai') {
       let res;
       if (Array.isArray(req.files) && req.files.length > 0) {
@@ -221,22 +245,84 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
     } else {
       throw new Error(`unknown service ${service}`);
     }
-  } catch (e) {
-    console.log(e);
-    // @ts-expect-error
-    res.json({ error: e?.message ?? e?.error?.message ?? e?.toString() ?? 'unknown error' });
+    return output_base64;
+  };
+
+  let ext = videos.includes(service) ? 'mp4' : 'png';
+
+  let settled = generate().then(
+    output_base64 => {
+      console.log('done');
+      if (SAVE_OUTPUTS) {
+        // Save the output to a file
+        fs.writeFileSync(path.join(outdir, `${ts}--${ext === 'mp4' ? 'video.mp4' : 'image.png'}`), Buffer.from(output_base64, 'base64'));
+      }
+      return { output_base64, error: null };
+    },
+    e => {
+      console.log(e);
+      return { output_base64: null, error: e?.message ?? e?.error?.message ?? e?.toString() ?? 'unknown error' };
+    },
+  );
+
+  // if the upstream API is fast, just long-poll as before; otherwise hand back an ID to poll
+  let timer: NodeJS.Timeout;
+  let outcome = await Promise.race([
+    settled,
+    new Promise<null>(resolve => {
+      timer = setTimeout(() => resolve(null), LONG_POLL_TIMEOUT);
+    }),
+  ]);
+  clearTimeout(timer!);
+
+  if (outcome != null) {
+    if (outcome.error != null) {
+      res.json({ error: outcome.error });
+    } else {
+      res.json({ b64: outcome.output_base64 });
+    }
     return;
   }
 
-  console.log('done');
+  let id = crypto.randomBytes(6).toString('hex');
+  results.set(id, { state: 'working', ts: Date.now(), ext });
+  console.log(`slow; handing back id ${id}`);
+  res.json({ id });
 
-  if (SAVE_OUTPUTS) {
-    // Save the output to a file
-    let filename = videos.includes(service) ? `${ts}--video.mp4` : `${ts}--image.png`;
-    fs.writeFileSync(path.join(outdir, filename), Buffer.from(output_base64, 'base64'));
+  settled.then(({ output_base64, error }) => {
+    let old = results.get(id);
+    if (old == null) return; // swept, somehow
+    if (error != null) {
+      results.set(id, { state: 'error', ts: old.ts, ext, error });
+    } else {
+      results.set(id, { state: 'done', ts: old.ts, ext, buffer: Buffer.from(output_base64!, 'base64') });
+    }
+  });
+});
+
+app.get('/poll/:id', (req, res) => {
+  let result = results.get(req.params.id);
+  if (result == null) {
+    res.json({ state: 'error', error: 'no longer serving this ID' });
+  } else if (result.state === 'done') {
+    res.json({ state: 'done', url: `/results/${req.params.id}.${result.ext}` });
+  } else if (result.state === 'error') {
+    res.json({ state: 'error', error: result.error });
+  } else {
+    res.json({ state: 'working' });
   }
+});
 
-  res.json({ b64: output_base64 });
+app.get('/results/:name', (req, res) => {
+  let match = req.params.name.match(/^(?<id>[0-9a-f]{12})\.(?<ext>png|mp4)$/);
+  let result = match ? results.get(match.groups!.id) : null;
+  if (result == null || result.state !== 'done' || result.ext !== match!.groups!.ext) {
+    res.status(404);
+    res.send('not found');
+    return;
+  }
+  res.setHeader('content-type', result.ext === 'mp4' ? 'video/mp4' : 'image/png');
+  res.send(result.buffer);
 });
 
 const contentTypeToExt: Record<string, string> = {
