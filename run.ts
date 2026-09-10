@@ -76,7 +76,7 @@ app.post('/check-user', (req, res) => {
 });
 
 app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), async (req, res) => {
-  let { prompt, ts, service, user, fps, duration, resolution, aspect_ratio, camera_fixed, input_fidelity, enhance_prompt, guidance, prompt_upsampling, nanobanana_resolution, prompt_expansion } = req.body;
+  let { prompt, ts, service, user, fps, duration, resolution, aspect_ratio, camera_fixed, high_precision_edits, enhance_prompt, guidance, prompt_upsampling, nanobanana_resolution, prompt_expansion } = req.body;
   if (!ALLOWED_USERS.includes(user)) {
     res.status(403);
     res.send('unknown user');
@@ -89,8 +89,8 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
   if (SAVE_OUTPUTS) {
     fs.writeFileSync(path.join(outdir, `${ts}--prompt.txt`), prompt, 'utf8');
     let settingsText = `user: ${user}\nservice: ${service}\n`;
-    if (service === 'openai' && input_fidelity) {
-      settingsText += `input_fidelity: ${input_fidelity}\n`;
+    if (service === 'openai') {
+      settingsText += `high_precision_edits: ${high_precision_edits === 'true'}\n`;
     } else if (service === 'seedance') {
       settingsText += `fps: ${fps}\nduration: ${duration}\nresolution: ${resolution}\naspect_ratio: ${aspect_ratio}\ncamera_fixed: ${camera_fixed}\n`;
     } else if (service === 'wan') {
@@ -119,21 +119,19 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
   let generate = async (): Promise<string> => {
     let output_base64: string;
     if (service === 'openai') {
+      let model = high_precision_edits === 'true' ? 'gpt-image-2.5-sunburst' : 'gpt-image-2.5-flare';
       let res;
       if (Array.isArray(req.files) && req.files.length > 0) {
         let editParams: any = {
-          model: 'gpt-image-2',
+          model,
           prompt,
           image: await Promise.all(req.files.map(f => OpenAI.toFile(f.buffer, f.originalname, { type: f.mimetype }))),
           quality: 'high',
         };
-        if (input_fidelity) {
-          editParams.input_fidelity = input_fidelity;
-        }
         res = await openai.images.edit(editParams);
       } else {
         res = await openai.images.generate({
-          model: 'gpt-image-2',
+          model,
           prompt,
           // size: '1024x1024',
           size: 'auto',

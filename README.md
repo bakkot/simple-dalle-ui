@@ -1,6 +1,6 @@
-# Simple DALL-E/gpt-image-1 UI
+# Simple image-generation UI
 
-A simple static webpage to wrap OpenAI's image-generating gpt-image-1 API and various other image/video generation APIs.
+A simple static webpage to wrap OpenAI's image-generating API and various other image/video generation APIs.
 
 ![screenshot](./screenshot.png)
 

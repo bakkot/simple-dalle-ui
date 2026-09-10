@@ -50,7 +50,7 @@ let pendingKey = 'dalle-ui-pending';
 
 // service-specific settings, by the id of the element holding them
 let serviceFields = {
-  openai: [],
+  openai: ['openai-high-precision-edits'],
   seedance: ['seedance-fps', 'seedance-duration', 'seedance-resolution', 'seedance-aspect-ratio', 'seedance-camera-fixed'],
   wan: ['wan-resolution', 'wan-aspect-ratio'],
   h3: ['h3-duration', 'h3-resolution', 'h3-aspect-ratio', 'h3-prompt-expansion'],
@@ -80,7 +80,9 @@ function applyOptions(service, options) {
 }
 
 function optionsToBody(service, options, body) {
-  if (service === 'seedance') {
+  if (service === 'openai') {
+    body.set('high_precision_edits', options['openai-high-precision-edits']);
+  } else if (service === 'seedance') {
     body.set('fps', options['seedance-fps']);
     body.set('duration', options['seedance-duration']);
     body.set('resolution', options['seedance-resolution']);
@@ -105,7 +107,9 @@ function optionsToBody(service, options, body) {
 
 function optionsToSettingsText(service, options) {
   let settingsText = `service: ${service}\n`;
-  if (service === 'seedance') {
+  if (service === 'openai') {
+    settingsText += `high_precision_edits: ${options['openai-high-precision-edits']}\n`;
+  } else if (service === 'seedance') {
     settingsText += `fps: ${options['seedance-fps']}\n`;
     settingsText += `duration: ${options['seedance-duration']}\n`;
     settingsText += `resolution: ${options['seedance-resolution']}\n`;
@@ -459,10 +463,6 @@ async function submit() {
 
     optionsToBody(service, options, body);
 
-    if (service === 'openai' && inputImages.length > 0) {
-      // body.set('input_fidelity', document.querySelector('input[name="openai-input-fidelity"]:checked').value);
-    }
-
     // if (service === 'kontext') {
     //   body.set('prompt_upsampling', document.getElementById('kontext-prompt-upsampling').checked);
     // }
@@ -557,6 +557,11 @@ addEventListener('DOMContentLoaded', async () => {
     }
   };
   history.addEventListener('click', dismiss(history));
+
+  // tear down the contents when the dialog closes, so videos stop playing
+  history.addEventListener('close', () => {
+    history.querySelector('.modal-contents').innerHTML = '';
+  });
 
   document.querySelector('.close-history').addEventListener('click', () => {
     history.close();
