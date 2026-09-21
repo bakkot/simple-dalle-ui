@@ -1,10 +1,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as crypto from 'node:crypto';
+import * as os from 'node:os';
 import express from 'express';
 import multer from 'multer';
 import OpenAI from 'openai';
 import { fal } from "@fal-ai/client";
+import { GoogleGenAI } from '@google/genai';
 
 let PORT = 31482; // 'oai' in base 36
 
@@ -13,6 +15,7 @@ let SAVE_OUTPUTS = true; // save outputs locally
 let OPENAI_API_KEY = fs.readFileSync(path.join(import.meta.dirname, 'OPENAI_KEY.txt'), 'utf8').trim();
 let FAL_API_KEY = fs.readFileSync(path.join(import.meta.dirname, 'FAL_KEY.txt'), 'utf8').trim();
 let openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+let google = new GoogleGenAI({ apiKey: fs.readFileSync(path.join(import.meta.dirname, 'GOOGLE_KEY.txt'), 'utf8').trim() });
 fal.config({
   credentials: FAL_API_KEY,
 });
@@ -24,7 +27,7 @@ if (SAVE_OUTPUTS) {
   fs.mkdirSync(outdir, { recursive: true });
 }
 
-let videos = ['seedance', 'wan', 'h3'];
+let videos = ['seedance', 'wan', 'h3', 'omni'];
 
 // how long to wait for the upstream API before switching to the poll-for-a-result strategy
 let LONG_POLL_TIMEOUT = 5_000;
@@ -93,7 +96,7 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
       settingsText += `high_precision_edits: ${high_precision_edits === 'true'}\n`;
     } else if (service === 'seedance') {
       settingsText += `fps: ${fps}\nduration: ${duration}\nresolution: ${resolution}\naspect_ratio: ${aspect_ratio}\ncamera_fixed: ${camera_fixed}\n`;
-    } else if (service === 'wan') {
+    } else if (service === 'wan' || service === 'omni') {
       settingsText += `resolution: ${resolution}\naspect_ratio: ${aspect_ratio}\n`;
     } else if (service === 'h3') {
       settingsText += `duration: ${duration}\nresolution: ${resolution}\naspect_ratio: ${aspect_ratio}\nprompt_expansion: ${prompt_expansion}\n`;
@@ -155,6 +158,52 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
     //   }) as FileOutput;
     //   let blob = await res.blob();
     //   output_base64 = Buffer.from(await blob.arrayBuffer()).toString('base64');
+    } else if (service === 'omni') {
+      let files = Array.isArray(req.files) ? req.files : [];
+      if (files.some(f => !f.mimetype.startsWith('image/'))) {
+        throw new Error('Gemini Omni only accepts images as input');
+      }
+      let interaction = await google.interactions.create({
+        model: 'gemini-omni-1.1-flash',
+        input: files.length === 0 ? prompt : [
+          ...files.map(f => ({ type: 'image' as const, data: f.buffer.toString('base64'), mime_type: f.mimetype })),
+          { type: 'text', text: prompt },
+        ],
+        response_format: {
+          type: 'video',
+          aspect_ratio: aspect_ratio || '16:9',
+          resolution: resolution || '720p',
+          delivery: 'uri',
+        },
+        background: false,
+        store: true, // Required by the API for URI video delivery.
+        stream: false,
+      });
+      let video = interaction.output_video;
+      if (video?.data) {
+        output_base64 = video.data;
+      } else if (video?.uri) {
+        let name = video.uri.match(/files\/[a-zA-Z0-9_-]+/)?.[0];
+        if (!name) throw new Error('Gemini Omni returned an invalid video URI');
+        let deadline = Date.now() + 10 * 60 * 1000;
+        while (true) {
+          let file = await google.files.get({ name });
+          if (file.state === 'ACTIVE') break;
+          if (file.state === 'FAILED') throw new Error('Gemini Omni video processing failed');
+          if (Date.now() >= deadline) throw new Error('Gemini Omni video processing timed out');
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+        let tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'omni-'));
+        try {
+          let downloadPath = path.join(tempDir, 'video.mp4');
+          await google.files.download({ file: { uri: video.uri }, downloadPath });
+          output_base64 = (await fs.promises.readFile(downloadPath)).toString('base64');
+        } finally {
+          await fs.promises.rm(tempDir, { recursive: true, force: true });
+        }
+      } else {
+        throw new Error('Gemini Omni returned no video');
+      }
     } else if (service === 'seedance') {
       let input: any = {
         fps: parseInt(fps) || 24,
@@ -290,7 +339,7 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
     },
   );
 
-  // if the upstream API is fast, just long-poll as before; otherwise hand back an ID to poll
+  // if the upstream API is fast, just long-poll; otherwise hand back an ID to poll
   let timer: NodeJS.Timeout;
   let outcome = await Promise.race([
     settled,

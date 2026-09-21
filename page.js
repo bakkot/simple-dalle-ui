@@ -43,7 +43,7 @@ let removeActiveImage = () => {
   console.error('unreachable');
 };
 
-let videos = ['seedance', 'wan', 'h3'];
+let videos = ['seedance', 'wan', 'h3', 'omni'];
 
 // key for the in-progress generation, so we can resume polling after a reload
 let pendingKey = 'dalle-ui-pending';
@@ -53,6 +53,7 @@ let serviceFields = {
   openai: ['openai-high-precision-edits'],
   seedance: ['seedance-fps', 'seedance-duration', 'seedance-resolution', 'seedance-aspect-ratio', 'seedance-camera-fixed'],
   wan: ['wan-resolution', 'wan-aspect-ratio'],
+  omni: ['omni-resolution', 'omni-aspect-ratio'],
   h3: ['h3-duration', 'h3-resolution', 'h3-aspect-ratio', 'h3-prompt-expansion'],
   qwen: ['qwen-aspect-ratio', 'qwen-realism'],
   nanobanana: ['nanobanana-resolution'],
@@ -88,6 +89,9 @@ function optionsToBody(service, options, body) {
     body.set('resolution', options['seedance-resolution']);
     body.set('aspect_ratio', options['seedance-aspect-ratio']);
     body.set('camera_fixed', options['seedance-camera-fixed']);
+  } else if (service === 'omni') {
+    body.set('resolution', options['omni-resolution']);
+    body.set('aspect_ratio', options['omni-aspect-ratio']);
   } else if (service === 'wan') {
     body.set('resolution', options['wan-resolution']);
     body.set('aspect_ratio', options['wan-aspect-ratio']);
@@ -115,6 +119,9 @@ function optionsToSettingsText(service, options) {
     settingsText += `resolution: ${options['seedance-resolution']}\n`;
     settingsText += `aspect_ratio: ${options['seedance-aspect-ratio']}\n`;
     settingsText += `camera_fixed: ${options['seedance-camera-fixed']}\n`;
+  } else if (service === 'omni') {
+    settingsText += `resolution: ${options['omni-resolution']}\n`;
+    settingsText += `aspect_ratio: ${options['omni-aspect-ratio']}\n`;
   } else if (service === 'wan') {
     settingsText += `resolution: ${options['wan-resolution']}\n`;
     settingsText += `aspect_ratio: ${options['wan-aspect-ratio']}\n`;
@@ -513,6 +520,7 @@ function toggleServiceSpecificInputs() {
   let openaiParams = document.getElementById('openai-params');
   let seedanceParams = document.getElementById('seedance-params');
   let wanParams = document.getElementById('wan-params');
+  let omniParams = document.getElementById('omni-params');
   let h3Params = document.getElementById('h3-params');
   // let kontextParams = document.getElementById('kontext-params');
   let qwenParams = document.getElementById('qwen-params');
@@ -521,6 +529,7 @@ function toggleServiceSpecificInputs() {
   openaiParams.style.display = service === 'openai' ? 'block' : 'none';
   seedanceParams.style.display = service === 'seedance' ? 'block' : 'none';
   wanParams.style.display = service === 'wan' ? 'block' : 'none';
+  omniParams.style.display = service === 'omni' ? 'block' : 'none';
   h3Params.style.display = service === 'h3' ? 'block' : 'none';
   // kontextParams.style.display = service === 'kontext' ? 'block' : 'none';
   qwenParams.style.display = service === 'qwen' ? 'block' : 'none';

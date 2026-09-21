@@ -346,6 +346,9 @@
 
         <input type="radio" id="h3" name="service" value="h3">
         <label for="h3">h3 (video)</label>
+
+        <input type="radio" id="omni" name="service" value="omni">
+        <label for="omni">gemini-omni-flash (video)</label>
       </div>
 
       <div id="openai-params" style="display: none; margin-top: 1em;">
@@ -416,6 +419,28 @@
             <option value="16:9">16:9</option>
             <option value="9:16">9:16</option>
             <option value="1:1">1:1</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="omni-params" style="display: none; margin-top: 1em;">
+        <div style="margin-bottom: 1em;">
+          Can use reference images. Supposedly capable of using an image as first and/or last frame if you ask it to.
+        </div>
+
+        <div>
+          <label for="omni-resolution">resolution:</label>
+          <select id="omni-resolution" name="omni-resolution">
+            <option value="360p">360p</option>
+            <option value="720p" selected>720p</option>
+            <option value="1080p">1080p (upscaled)</option>
+            <option value="4k">4K (upscaled)</option>
+          </select>
+
+          <label for="omni-aspect-ratio" style="margin-left: 1em;">aspect ratio:</label>
+          <select id="omni-aspect-ratio" name="omni-aspect-ratio">
+            <option value="16:9" selected>16:9</option>
+            <option value="9:16">9:16</option>
           </select>
         </div>
       </div>

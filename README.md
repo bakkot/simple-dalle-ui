@@ -17,4 +17,4 @@ node run.ts
 
 If you are using a version of node prior to 23.6.0, you will likely need to include `--experimental-strip-types` after the `node` command.
 
-You will need an OpenAI API key in `OPENAI_KEY.txt` and a Fal.AI API key in `FAL_KEY`. If you don't care about one or the other you can use an empty file and then just not submit requests to that one.
+You will need an OpenAI API key in `OPENAI_KEY.txt` and a Fal.AI API key in `FAL_KEY.txt`, and a Google API key in `GOOGLE_KEY.txt`. If you don't care about a provider you can use an empty file and then just not submit requests to that one.
