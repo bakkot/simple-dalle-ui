@@ -164,7 +164,7 @@ app.post('/image', multer({ storage: multer.memoryStorage() }).array('images'), 
         throw new Error('Gemini Omni only accepts images as input');
       }
       let interaction = await google.interactions.create({
-        model: 'gemini-omni-1.1-flash',
+        model: 'gemini-omni-1.2-flash',
         input: files.length === 0 ? prompt : [
           ...files.map(f => ({ type: 'image' as const, data: f.buffer.toString('base64'), mime_type: f.mimetype })),
           { type: 'text', text: prompt },
